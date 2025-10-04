@@ -1,6 +1,5 @@
-// app/(auth)/login.tsx
 import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -23,13 +22,15 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleLogin = async () => {
     setLoading(true);
-    // TODO: Implement login logic
+
     setTimeout(() => {
       setLoading(false);
       console.log('Login:', { email, password });
+      router.replace('/(tabs)');
     }, 1500);
   };
 
