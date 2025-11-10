@@ -1,63 +1,22 @@
 // app/(tabs)/index.tsx
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   Image,
-  TextInput,
   SafeAreaView,
+  ScrollView,
   StatusBar,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { categories, products } from '../data/products';
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-
-  const categories = [
-    { id: 1, name: 'Điện thoại', icon: 'phone-portrait', color: '#EF4444' },
-    { id: 2, name: 'Laptop', icon: 'laptop', color: '#3B82F6' },
-    { id: 3, name: 'Tai nghe', icon: 'headset', color: '#10B981' },
-    { id: 4, name: 'Đồng hồ', icon: 'watch', color: '#F59E0B' },
-    { id: 5, name: 'Máy ảnh', icon: 'camera', color: '#8B5CF6' },
-    { id: 6, name: 'Phụ kiện', icon: 'gift', color: '#EC4899' },
-  ];
-
-  const products = [
-    {
-      id: 1,
-      name: 'iPhone 15 Pro Max',
-      price: 29990000,
-      image: 'https://via.placeholder.com/150',
-      rating: 4.8,
-      sold: 234,
-    },
-    {
-      id: 2,
-      name: 'Samsung Galaxy S24',
-      price: 22990000,
-      image: 'https://via.placeholder.com/150',
-      rating: 4.6,
-      sold: 189,
-    },
-    {
-      id: 3,
-      name: 'MacBook Pro M3',
-      price: 54990000,
-      image: 'https://via.placeholder.com/150',
-      rating: 4.9,
-      sold: 156,
-    },
-    {
-      id: 4,
-      name: 'AirPods Pro 2',
-      price: 6490000,
-      image: 'https://via.placeholder.com/150',
-      rating: 4.7,
-      sold: 412,
-    },
-  ];
+  const router = useRouter();
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('vi-VN') + 'đ';
@@ -66,7 +25,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" />
-      
+
       {/* Header */}
       <View className="bg-white px-4 pt-4 pb-3 border-b border-gray-100">
         <View className="flex-row items-center justify-between mb-3">
@@ -86,14 +45,30 @@ export default function HomeScreen() {
 
         {/* Search Bar */}
         <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
-          <Ionicons name="search" size={20} color="#9CA3AF" />
+          <TouchableOpacity
+            onPress={() => {
+              if (searchQuery.trim().length > 0) {
+                router.push(`/all_products?query=${encodeURIComponent(searchQuery)}`);
+              }
+            }}
+          >
+            <Ionicons name="search" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
           <TextInput
             placeholder="Tìm kiếm sản phẩm..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             className="flex-1 ml-3 text-gray-900"
             placeholderTextColor="#9CA3AF"
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              if (searchQuery.trim().length > 0) {
+                router.push(`/all_products?query=${encodeURIComponent(searchQuery)}`);
+              }
+            }}
           />
+
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
               <Ionicons name="close-circle" size={20} color="#9CA3AF" />
@@ -129,9 +104,10 @@ export default function HomeScreen() {
           <View className="flex-row flex-wrap justify-between">
             {categories.map((category) => (
               <TouchableOpacity
-                key={category.id}
+                key={`cat-${category.id}`} // prefix để chắc chắn key duy nhất
                 className="items-center mb-4"
                 style={{ width: '30%' }}
+                onPress={() => router.push(`/all_products?category=${encodeURIComponent(category.name)}`)}
               >
                 <View
                   className="w-16 h-16 rounded-2xl items-center justify-center mb-2"
@@ -157,19 +133,27 @@ export default function HomeScreen() {
             <Text className="text-lg font-bold text-gray-900">
               Sản phẩm nổi bật
             </Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/all_products?showAll=true')}
+            >
               <Text className="text-blue-600 font-medium">Xem tất cả</Text>
             </TouchableOpacity>
           </View>
           <View className="flex-row flex-wrap justify-between">
-            {products.map((product) => (
+            {products.slice(0, 4).map((product) => ( // chỉ lấy 4 sp nổi bật
               <TouchableOpacity
-                key={product.id}
+                key={`prod-${product.id}`} // prefix để chắc chắn key duy nhất
                 className="bg-white rounded-2xl p-3 mb-4 border border-gray-100"
                 style={{ width: '48%' }}
+                onPress={() =>
+                  router.push({
+                    pathname: "/product/[id]" as any,
+                    params: { id: String(product.id) },
+                  })
+                }
               >
                 <Image
-                  source={{ uri: product.image }}
+                  source={product.image}
                   className="w-full h-32 rounded-xl mb-3"
                   resizeMode="cover"
                 />

@@ -1,19 +1,20 @@
 // app/(tabs)/profile.tsx
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Image,
   Alert,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 
 export default function ProfileScreen() {
+  const router = useRouter();
+
   const handleLogout = () => {
     Alert.alert(
       'Đăng xuất',
@@ -75,6 +76,13 @@ export default function ProfileScreen() {
       subtitle: 'Cài đặt tài khoản',
       color: '#6B7280',
     },
+    {
+      id: 7,
+      icon: 'home-outline',
+      title: 'Cửa hàng của tôi',
+      subtitle: 'Quản lý cửa hàng',
+      color: '#9B6890',
+    },
   ];
 
   const quickActions = [
@@ -86,7 +94,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" />
-      
+
       {/* Header */}
       <View className="bg-white px-4 py-4 border-b border-gray-100">
         <Text className="text-2xl font-bold text-gray-900">Tài khoản</Text>
@@ -181,6 +189,9 @@ export default function ProfileScreen() {
             <TouchableOpacity
               key={item.id}
               className="bg-white rounded-2xl p-4 mb-3 flex-row items-center"
+              onPress={() => {
+                if (item.id === 7) router.push('/home_seller'); // Chuyển trang
+              }}
             >
               <View
                 className="w-12 h-12 rounded-xl items-center justify-center"
