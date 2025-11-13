@@ -1,0 +1,35 @@
+FROM node:20-alpine
+
+# Cài đặt các dependencies cần thiết
+RUN apk add --no-cache \
+    make \
+    g++ \
+    openssl \
+    libc6-compat
+
+# Set thư mục làm việc
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+RUN npm config set registry https://registry.npmmirror.com
+RUN npm set fetch-retries 5 && npm set fetch-retry-factor 2 && npm set fetch-retry-mintimeout 20000
+# Install dependencies
+RUN npm ci --legacy-peer-deps
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Copy source code
+COPY . .
+
+# Build Next.js app
+RUN npm run build
+
+# Expose port
+EXPOSE 3000
+
+# Start script
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
