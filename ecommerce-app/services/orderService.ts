@@ -57,7 +57,8 @@ export type PaymentMethod =
   | 'bank_transfer'
   | 'momo'
   | 'zalopay'
-  | 'credit_card';
+  | 'credit_card'
+  | 'pay_later';
 
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
 
@@ -181,7 +182,11 @@ export const orderService = {
     status: OrderStatus,
     paymentStatus?: PaymentStatus
   ): Promise<OrderResponse> {
+    console.log('Order ID received in service:', id);
     try {
+      if (typeof id !== 'number' || id <= 0) {
+        throw new Error('Order ID must be a positive number.');
+      }
       const response = await api.put(`/orders/${id}`, {
         status,
         ...(paymentStatus && { paymentStatus }),
@@ -218,4 +223,64 @@ export const orderService = {
       };
     }
   },
+
+  /**
+   * Phương thức xác nhận đơn hàng (Pending -> Confirmed)
+   * @param orderId ID của đơn hàng cần xác nhận
+   */
+  confirmOrder: async (orderId: number): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Bạn có thể dùng updateOrderStatus, hoặc một endpoint chuyên biệt
+      // Nếu dùng endpoint chuyên biệt:
+      // await api.put(`/orders/${orderId}/confirm`);
+
+      // HOẶC sử dụng hàm updateOrderStatus hiện có (nếu nó cho phép chuyển trạng thái)
+      const result = await orderService.updateOrderStatus(orderId, 'confirmed');
+      return { success: result.success, error: result.error };
+
+    } catch (error) {
+      console.error("Error confirming order:", error);
+      return { success: false, error: "Lỗi hệ thống khi xác nhận đơn hàng." };
+    }
+  },
+
+  /**
+   * Phương thức chuyển đơn hàng sang trạng thái Đang giao (-> Shipping)
+   * @param orderId ID của đơn hàng
+   */
+  shipOrder: async (orderId: number): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Endpoint API để chuyển trạng thái sang Shipping
+      // await api.put(`/orders/${orderId}/ship`); 
+
+      // HOẶC sử dụng hàm updateOrderStatus hiện có
+      const result = await orderService.updateOrderStatus(orderId, 'shipping');
+      return { success: result.success, error: result.error };
+
+    } catch (error) {
+      console.error("Error shipping order:", error);
+      return { success: false, error: "Lỗi hệ thống khi chuyển trạng thái giao hàng." };
+    }
+  },
+
+};
+
+export const getOrderById = async (orderId: number) => {
+  const res = await api.get(`/orders/${orderId}`);
+  return res.data;
+};
+
+export const cancelOrder = async (orderId: number) => {
+  const res = await api.delete(`/orders/${orderId}`);
+  return res.data;
+};
+
+export const requestReturn = async (orderId: number) => {
+  const res = await api.put(`/orders/${orderId}`, { status: 'returned' });
+  return res.data;
+};
+
+export const confirmDelivered = async (orderId: number) => {
+  const res = await api.put(`/orders/${orderId}`, { status: "delivered" });
+  return res.data;
 };

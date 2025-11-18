@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Product, productService } from '@/services/productService';
+import { useCart } from '../../context/CartContext';
 
 const { width } = Dimensions.get('window');
 
@@ -29,7 +30,7 @@ export default function ProductDetailCusScreen() {
   const [quantity, setQuantity] = useState(1);
   const scrollY = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
-  
+
   // Ẩn tab bar khi vào màn hình này
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -59,7 +60,7 @@ export default function ProductDetailCusScreen() {
     try {
       setLoading(true);
       const result = await productService.getProductById(Number(id));
-      
+
       if (result.success && result.data) {
         setProduct(result.data.products[0]);
       } else {
@@ -85,30 +86,32 @@ export default function ProductDetailCusScreen() {
     }
   };
 
+  const { addToCart } = useCart();
+
   const handleAddToCart = () => {
     if (!product) return;
-    
-    if (product.stock === 0) {
-      Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
-      return;
-    }
 
-    if (quantity > product.stock) {
-      Alert.alert('Thông báo', `Chỉ còn ${product.stock} sản phẩm trong kho`);
-      return;
-    }
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images[0],
+      quantity: quantity,
+    });
 
     Alert.alert(
-      'Thêm vào giỏ hàng',
-      `Đã thêm ${quantity} sản phẩm vào giỏ hàng`,
-      [{ text: 'OK' }]
+      "Đã thêm vào giỏ",
+      "",
+      [
+        { text: "Xem giỏ hàng", onPress: () => router.push("/cart") },
+        { text: "Tiếp tục" },
+      ]
     );
-    // TODO: Implement add to cart API
   };
 
   const handleBuyNow = () => {
     if (!product) return;
-    
+
     if (product.stock === 0) {
       Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
       return;
@@ -124,10 +127,12 @@ export default function ProductDetailCusScreen() {
       'Chuyển đến trang thanh toán?',
       [
         { text: 'Hủy', style: 'cancel' },
-        { text: 'Đồng ý', onPress: () => {
-          // TODO: Navigate to checkout
-          Alert.alert('Thông báo', 'Tính năng đang phát triển');
-        }}
+        {
+          text: 'Đồng ý', onPress: () => {
+            // TODO: Navigate to checkout
+            Alert.alert('Thông báo', 'Tính năng đang phát triển');
+          }
+        }
       ]
     );
   };
@@ -152,7 +157,7 @@ export default function ProductDetailCusScreen() {
 
   const getStockStatus = () => {
     if (!product) return { text: '', color: '', bg: '' };
-    
+
     if (product.stock === 0) {
       return { text: 'Hết hàng', color: '#EF4444', bg: '#FEE2E2' };
     } else if (product.stock < 10) {
@@ -292,9 +297,8 @@ export default function ProductDetailCusScreen() {
             {product.images.map((_, index) => (
               <View
                 key={index}
-                className={`w-2 h-2 rounded-full mx-1 ${
-                  index === currentImageIndex ? 'bg-white' : 'bg-white/40'
-                }`}
+                className={`w-2 h-2 rounded-full mx-1 ${index === currentImageIndex ? 'bg-white' : 'bg-white/40'
+                  }`}
               />
             ))}
           </View>
@@ -458,7 +462,7 @@ export default function ProductDetailCusScreen() {
             <Text className="text-gray-900 font-bold text-base mb-3">
               Thông tin chi tiết
             </Text>
-            
+
             <View className="space-y-3">
               <View className="flex-row items-center justify-between py-3 border-b border-gray-200">
                 <Text className="text-gray-600 text-sm">Danh mục</Text>
@@ -466,7 +470,7 @@ export default function ProductDetailCusScreen() {
                   {product.category.name}
                 </Text>
               </View>
-              
+
               <View className="flex-row items-center justify-between py-3 border-b border-gray-200">
                 <Text className="text-gray-600 text-sm">Tình trạng</Text>
                 <Text
@@ -476,7 +480,7 @@ export default function ProductDetailCusScreen() {
                   {stockStatus.text}
                 </Text>
               </View>
-              
+
               <View className="flex-row items-center justify-between py-3">
                 <Text className="text-gray-600 text-sm">Đánh giá</Text>
                 <View className="flex-row items-center">
@@ -499,9 +503,8 @@ export default function ProductDetailCusScreen() {
           <TouchableOpacity
             onPress={handleAddToCart}
             disabled={product.stock === 0}
-            className={`flex-1 bg-blue-100 py-4 items-center ${
-              product.stock === 0 ? 'opacity-50' : ''
-            }`}
+            className={`flex-1 bg-blue-100 py-4 items-center ${product.stock === 0 ? 'opacity-50' : ''
+              }`}
           >
             <View className="flex-col items-center">
               <Ionicons name="cart-outline" size={22} color="#3B82F6" />

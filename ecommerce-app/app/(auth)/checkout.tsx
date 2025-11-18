@@ -1,8 +1,9 @@
-// app/checkout.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
+import { orderService, PaymentMethod } from '@/services/orderService';
 import {
+  Alert,
   Image,
   SafeAreaView,
   ScrollView,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useCart } from '../context/CartContext';
 
 interface OrderItem {
   id: number;
@@ -21,28 +23,30 @@ interface OrderItem {
   image: string;
 }
 
+const getPaymentMethodCode = (selectedPaymentId: number): PaymentMethod => {
+  switch (selectedPaymentId) {
+    case 1:
+      return 'cod';
+    case 2:
+      return 'momo';
+    case 3:
+      return 'credit_card';
+    case 4:
+      return 'bank_transfer';
+    case 5:
+      return 'pay_later';
+    default:
+      return 'cod';
+  }
+};
+
 export default function CheckoutScreen() {
+  const { cart, clearCart } = useCart();
   const [selectedAddress, setSelectedAddress] = useState(1);
   const [selectedPayment, setSelectedPayment] = useState(1);
   const [voucherCode, setVoucherCode] = useState('');
   const [note, setNote] = useState('');
 
-  const orderItems: OrderItem[] = [
-    {
-      id: 1,
-      name: 'iPhone 15 Pro Max 256GB',
-      price: 29990000,
-      quantity: 1,
-      image: 'https://via.placeholder.com/60',
-    },
-    {
-      id: 2,
-      name: 'AirPods Pro 2nd Gen',
-      price: 6490000,
-      quantity: 2,
-      image: 'https://via.placeholder.com/60',
-    },
-  ];
 
   const addresses = [
     {
@@ -66,23 +70,74 @@ export default function CheckoutScreen() {
     { id: 2, name: 'Ví MoMo', icon: 'wallet' },
     { id: 3, name: 'Thẻ ATM/Visa/Master', icon: 'card' },
     { id: 4, name: 'Chuyển khoản ngân hàng', icon: 'business' },
+    { id: 5, name: 'Pay layter', icon: 'wallet' },
   ];
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('vi-VN') + 'đ';
   };
 
-  const subtotal = orderItems.reduce(
+  const subtotal = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
+
   const shippingFee = 30000;
   const discount = 0;
   const total = subtotal + shippingFee - discount;
 
-  const handlePlaceOrder = () => {
-    router.push('/order_success');
-  };
+  const handlePlaceOrder = async () => {
+    try {
+      if (cart.length === 0) {
+        Alert.alert("Lỗi", "Giỏ hàng trống. Vui lòng thêm sản phẩm để đặt hàng.");
+        return;
+      }
+      
+      const address = addresses.find((a) => a.id === selectedAddress);
+      if (!address) {
+        Alert.alert("Lỗi", "Vui lòng chọn địa chỉ giao hàng hợp lệ.");
+        return;
+      }
+      
+      const items = cart.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+      }));
+
+      const body = {
+        customerId: 1, // ⚠ TODO: lấy từ user login
+        items,
+        shippingName: address.name,
+        shippingPhone: address.phone,
+        shippingAddress: address.address,
+        paymentMethod: getPaymentMethodCode(selectedPayment),
+        note,
+      };
+      const result = await orderService.createOrder(body);
+
+      if (!result.success || !result.data) {
+        // Xử lý lỗi trả về từ service
+        Alert.alert("Đặt hàng thất bại", result.error || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+        return;
+      }
+      
+      // 3. THÀNH CÔNG
+      clearCart();
+      
+      // Chuyển sang màn hình thành công và truyền dữ liệu đơn hàng
+      router.push({
+        pathname: "/order_success",
+        // Chuyển đối tượng đơn hàng thành chuỗi JSON an toàn
+        params: { 
+          orderData: JSON.stringify(result.data) 
+        },
+      });
+
+    } catch (error) {
+      console.error("Lỗi không mong muốn:", error);
+      Alert.alert("Lỗi", "Có lỗi hệ thống xảy ra. Vui lòng kiểm tra kết nối mạng.");
+    }
+};
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -139,11 +194,11 @@ export default function CheckoutScreen() {
           <View className="flex-row items-center mb-4">
             <Ionicons name="cart" size={20} color="#2563EB" />
             <Text className="text-gray-900 font-bold text-base ml-2">
-              Sản phẩm ({orderItems.length})
+              Sản phẩm ({cart.length})
             </Text>
           </View>
 
-          {orderItems.map((item) => (
+          {cart.map((item) => (
             <View key={item.id} className="flex-row mb-4 pb-4 border-b border-gray-100">
               <Image
                 source={{ uri: item.image }}

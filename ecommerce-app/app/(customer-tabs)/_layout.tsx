@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { CartProvider } from '../context/CartContext';
 
 export default function TabLayout() {
   return (
@@ -31,18 +32,12 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="product-customer/[id]"
-        options={{
-          href: null,
-        }}
+        options={{ href: null }}
       />
-      {/* <Tabs.Screen
-        name="product/[id]"
-        options={{
-          href: null,
-        }}
-      /> */}
+
       <Tabs.Screen
         name="mall"
         options={{
@@ -52,16 +47,17 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="cart"
         options={{
-          title: 'Live & Video',
+          title: 'Giỏ hàng',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="videocam" size={size} color={color} />
+            <Ionicons name="cart" size={size} color={color} />
           ),
-          tabBarBadge: 3,
         }}
       />
+
       <Tabs.Screen
         name="notifications"
         options={{
@@ -69,9 +65,9 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications" size={size} color={color} />
           ),
-          tabBarBadge: 67,
         }}
       />
+
       <Tabs.Screen
         name="profile"
         options={{
@@ -81,6 +77,20 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="order/[id]"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+          name="all_orders"
+          options={{ 
+            href: null,
+          }}
+        />
     </Tabs>
+
+    
   );
 }
