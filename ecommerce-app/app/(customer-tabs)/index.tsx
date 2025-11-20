@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { useCart } from "@/context/CartContext";
 
 export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,7 +26,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const { cart, removeFromCart, updateQuantity } = useCart();
   useEffect(() => {
     fetchData();
   }, []);
@@ -110,7 +111,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="cart-outline" size={26} color="#1F2937" />
               <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
-                <Text className="text-white text-xs font-bold">5</Text>
+                <Text className="text-white text-xs font-bold">{cart.length}</Text>
               </View>
             </TouchableOpacity>
 

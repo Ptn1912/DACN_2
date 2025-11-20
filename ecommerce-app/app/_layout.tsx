@@ -3,9 +3,9 @@ import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import "../global.css";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthProvider } from '@/hooks/useAuth';
-import { CartProvider } from './context/CartContext';
+import { CartProvider } from "@/context/CartContext";
 // Giữ splash screen hiển thị khi load fonts
 SplashScreen.preventAutoHideAsync();
 

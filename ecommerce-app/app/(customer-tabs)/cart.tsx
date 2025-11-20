@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -6,18 +6,19 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useCart } from '../context/CartContext';
+import { useCart } from "@/context/CartContext";
 
 export default function CartScreen() {
   const { cart, removeFromCart, updateQuantity } = useCart();
 
-  const formatPrice = (price: number) =>
-    price.toLocaleString('vi-VN') + 'đ';
-
+  const formatPrice = (price: number) => {
+    return Number(price).toLocaleString("vi-VN") + " ₫";
+  };
+  
   const totalPrice = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -26,21 +27,26 @@ export default function CartScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" />
-
-      <View className="bg-white px-4 py-4 border-b border-gray-100">
-        <Text className="text-2xl font-bold text-gray-900">
+      <View className="flex-row items-center justify-between mb-8 bg-white px-4 py-4">
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={26} color="#000" />
+        </TouchableOpacity>
+        <Text className="text-black text-2xl">
           Giỏ hàng ({cart.length})
         </Text>
+        <TouchableOpacity onPress={() => console.log("Settings Pressed")}>
+          <Ionicons name="chatbubble-ellipses-outline" size={26} color="#000" />
+        </TouchableOpacity>
       </View>
-
       {cart.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="cart-outline" size={100} color="#D1D5DB" />
           <Text className="text-gray-500 text-lg mt-4 text-center">
             Giỏ hàng trống
           </Text>
-          <TouchableOpacity className="bg-blue-600 rounded-xl py-3 px-8 mt-6"
-            onPress={() => router.push("/")}
+          <TouchableOpacity
+            className="bg-blue-600 rounded-xl py-3 px-8 mt-6"
+            onPress={() => router.push("/(customer-tabs)/mall")}
           >
             <Text className="text-white font-semibold">Mua sắm ngay</Text>
           </TouchableOpacity>
@@ -55,7 +61,6 @@ export default function CartScreen() {
                   className="bg-white rounded-2xl p-4 mb-3 border border-gray-100"
                 >
                   <View className="flex-row">
-
                     <Image
                       source={{ uri: item.image }}
                       className="w-20 h-20 rounded-xl"
@@ -101,7 +106,6 @@ export default function CartScreen() {
                     >
                       <Ionicons name="close-circle" size={24} color="#EF4444" />
                     </TouchableOpacity>
-
                   </View>
                 </View>
               ))}
@@ -117,7 +121,7 @@ export default function CartScreen() {
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => router.push('/checkout')}
+                onPress={() => router.push("/checkout")}
                 className="rounded-xl py-4 px-8 bg-blue-600"
               >
                 <Text className="text-white font-semibold text-base">

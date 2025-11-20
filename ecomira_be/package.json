@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.8.0",
+    "ethers": "^6.15.0",
     "jsonwebtoken": "^9.0.2",
     "next": "^16.0.2",
     "next-cloudinary": "^6.17.4",

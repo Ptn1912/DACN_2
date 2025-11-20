@@ -114,7 +114,9 @@ export default function OrderDetailScreen() {
   };
 
 
-  const formatPrice = (price: number) => price.toLocaleString("vi-VN") + "đ";
+  const formatPrice = (price: number) => {
+  return Number(price).toLocaleString('vi-VN') + ' ₫';
+};
 
   if (loading) {
     return (
@@ -140,10 +142,10 @@ export default function OrderDetailScreen() {
       <ScrollView className="px-4 py-4">
         {/* Header */}
         <View className="flex-row justify-between items-center mb-4">
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={() => router.push("/(customer-tabs)/all_orders")}>
             <Ionicons name="chevron-back" size={28} color="#2563EB" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-gray-900">Chi tiết đơn #{order.id}</Text>
+          <Text className="text-2xl text-gray-900">Chi tiết đơn #{order.id}</Text>
           <View style={{ width: 28 }} />
         </View>
 

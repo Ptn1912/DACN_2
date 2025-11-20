@@ -130,8 +130,8 @@ export default function OrdersScreen() {
   }
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
-  };
+  return Number(price).toLocaleString('vi-VN') + ' ₫';
+};
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('vi-VN', {

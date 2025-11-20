@@ -29,7 +29,9 @@ export default function BuyerOrdersScreen() {
         return map[status] || { text: status, color: "#000" };
     };
 
-    const formatPrice = (price: number) => price.toLocaleString("vi-VN") + "đ";
+    const formatPrice = (price: number) => {
+  return Number(price).toLocaleString('vi-VN') + ' ₫';
+};
 
     const formatDate = (date: Date | string) =>
         new Date(date).toLocaleDateString("vi-VN", {
@@ -62,7 +64,7 @@ export default function BuyerOrdersScreen() {
             <ScrollView
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#3B82F6"]} />}
             >
-                <Text className="text-gray-900 font-bold text-xl px-4 py-4">Đơn hàng của tôi</Text>
+                <Text className="text-gray-900 text-2xl px-4 py-4 justify-center">Đơn hàng của tôi ({orders.length})</Text>
 
                 {orders.length === 0 ? (
                     <View className="items-center justify-center py-20">
@@ -80,7 +82,7 @@ export default function BuyerOrdersScreen() {
                             <TouchableOpacity
                                 key={order.id}
                                 className="bg-white rounded-xl p-4 mx-4 mb-3 shadow-md border border-gray-100"
-                                onPress={() => router.push(`/order/${order.id}`)} // dẫn tới trang chi tiết đơn hàng
+                                onPress={() => router.push(`(customer-tabs)/order/${order.id}`)} // dẫn tới trang chi tiết đơn hàng
                             >
                                 <View className="flex-row justify-between mb-2">
                                     <Text className="font-bold text-gray-900">#{order.id}</Text>

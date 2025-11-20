@@ -1,0 +1,20 @@
+export const SPAYLATER_CONFIG = {
+  DEFAULT_CREDIT_LIMIT: 2000000, // 2 triệu VND
+  PAYMENT_PERIOD_DAYS: 30,
+  LATE_FEE_RATE: 0.05, // 5%
+  MIN_PAYMENT_AMOUNT: 50000, // 50k VND
+};
+
+export const TRANSACTION_STATUS = {
+  PENDING: 'PENDING',
+  PARTIALLY_PAID: 'PARTIALLY_PAID',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  CANCELLED: 'CANCELLED',
+};
+
+export const PAYMENT_METHODS = {
+  BANK_TRANSFER: 'bank_transfer',
+  MOMO: 'momo',
+  ZALOPAY: 'zalopay',
+};

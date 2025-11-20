@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Product, productService } from '@/services/productService';
-import { useCart } from '../../context/CartContext';
+import { useCart } from "@/context/CartContext";
 
 const { width } = Dimensions.get('window');
 
@@ -129,8 +129,13 @@ export default function ProductDetailCusScreen() {
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Đồng ý', onPress: () => {
-            // TODO: Navigate to checkout
-            Alert.alert('Thông báo', 'Tính năng đang phát triển');
+            router.push({
+              pathname: '/checkout',
+              params: {
+                productId: product.id,
+                quantity: quantity,
+              },
+            });
           }
         }
       ]

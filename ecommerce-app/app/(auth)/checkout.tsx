@@ -1,80 +1,100 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { orderService, PaymentMethod } from '@/services/orderService';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { Linking } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { momoService } from '../../services/momoService';
+import { orderService, PaymentMethod } from "@/services/orderService";
 import {
   Alert,
   Image,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { useCart } from '../context/CartContext';
-
-interface OrderItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
+  Modal,
+  ActivityIndicator,
+} from "react-native";
+import { useCart } from "@/context/CartContext";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "@/hooks/useAuth";
+import { useSPayLater } from "@/hooks/useSPayLater";
+import { UserAddress } from "@/services/orderService";
 
 const getPaymentMethodCode = (selectedPaymentId: number): PaymentMethod => {
   switch (selectedPaymentId) {
     case 1:
-      return 'cod';
+      return "cod";
     case 2:
-      return 'momo';
+      return "momo";
     case 3:
-      return 'credit_card';
+      return "credit_card";
     case 4:
-      return 'bank_transfer';
+      return "bank_transfer";
     case 5:
-      return 'pay_later';
+      return "spaylater";
     default:
-      return 'cod';
+      return "cod";
   }
 };
 
 export default function CheckoutScreen() {
   const { cart, clearCart } = useCart();
-  const [selectedAddress, setSelectedAddress] = useState(1);
+  const { user } = useAuth();
   const [selectedPayment, setSelectedPayment] = useState(1);
-  const [voucherCode, setVoucherCode] = useState('');
-  const [note, setNote] = useState('');
+  const [voucherCode, setVoucherCode] = useState("");
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const {
+    customer,
+    loading: loadingSPayLater,
+    createTransaction,
+    isRegistered,
+  } = useSPayLater();
+  const [spaylaterAdvancePayment, setSpaylaterAdvancePayment] = useState(0);
 
+  // Shipping address state
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [shippingName, setShippingName] = useState("");
+  const [shippingPhone, setShippingPhone] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [hasAddress, setHasAddress] = useState(false);
+  const [loadingAddress, setLoadingAddress] = useState(false);
 
-  const addresses = [
-    {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      phone: '0901234567',
-      address: '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM',
-      isDefault: true,
-    },
-    {
-      id: 2,
-      name: 'Nguyễn Văn A',
-      phone: '0901234567',
-      address: '456 Đường DEF, Phường GHI, Quận 3, TP.HCM',
-      isDefault: false,
-    },
-  ];
+  // Load address from last order
+  useEffect(() => {
+    const loadAddress = async () => {
+      if (!user) return;
+      setLoadingAddress(true);
+      try {
+        const lastAddress = await orderService.getLastShippingAddress(user.id);
+        if (lastAddress) {
+          setShippingName(lastAddress.shippingName);
+          setShippingPhone(lastAddress.shippingPhone);
+          setShippingAddress(lastAddress.shippingAddress);
+          setHasAddress(true);
+        }
+      } catch (error) {
+        console.error("Error loading address:", error);
+      } finally {
+        setLoadingAddress(false);
+      }
+    };
+
+    loadAddress();
+  }, [user]);
 
   const paymentMethods = [
-    { id: 1, name: 'Thanh toán khi nhận hàng (COD)', icon: 'cash' },
-    { id: 2, name: 'Ví MoMo', icon: 'wallet' },
-    { id: 3, name: 'Thẻ ATM/Visa/Master', icon: 'card' },
-    { id: 4, name: 'Chuyển khoản ngân hàng', icon: 'business' },
-    { id: 5, name: 'Pay layter', icon: 'wallet' },
+    { id: 1, name: "Thanh toán khi nhận hàng (COD)", icon: "cash" },
+    { id: 2, name: "Ví MoMo", icon: "wallet" },
+    { id: 3, name: "Thẻ ATM/Visa/Master", icon: "card" },
+    { id: 4, name: "Chuyển khoản ngân hàng", icon: "business" },
+    { id: 5, name: "Pay later", icon: "wallet" },
   ];
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
+    return Number(price).toLocaleString("vi-VN") + " ₫";
   };
 
   const subtotal = cart.reduce(
@@ -86,71 +106,252 @@ export default function CheckoutScreen() {
   const discount = 0;
   const total = subtotal + shippingFee - discount;
 
+  useEffect(() => {
+    if (selectedPayment === 5 && customer) {
+      setSpaylaterAdvancePayment(0);
+    } else {
+      setSpaylaterAdvancePayment(0);
+    }
+  }, [selectedPayment, total, customer]);
+
+  const finalTotal = selectedPayment === 5 ? 0 : total;
+
+  const validateShippingInfo = () => {
+    if (!shippingName.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập họ tên người nhận");
+      return false;
+    }
+    if (!shippingPhone.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại");
+      return false;
+    }
+    if (!shippingAddress.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập địa chỉ giao hàng");
+      return false;
+    }
+
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!phoneRegex.test(shippingPhone.replace(/\s/g, ""))) {
+      Alert.alert("Lỗi", "Số điện thoại không hợp lệ");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSaveAddress = () => {
+    if (validateShippingInfo()) {
+      setHasAddress(true);
+      setShowAddressModal(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     try {
       if (cart.length === 0) {
-        Alert.alert("Lỗi", "Giỏ hàng trống. Vui lòng thêm sản phẩm để đặt hàng.");
+        Alert.alert(
+          "Lỗi",
+          "Giỏ hàng trống. Vui lòng thêm sản phẩm để đặt hàng."
+        );
         return;
       }
-      
-      const address = addresses.find((a) => a.id === selectedAddress);
-      if (!address) {
-        Alert.alert("Lỗi", "Vui lòng chọn địa chỉ giao hàng hợp lệ.");
+
+      if (!user) {
+        Alert.alert("Lỗi", "Vui lòng đăng nhập để đặt hàng.");
+        router.push("/login");
         return;
       }
-      
+
+      // Kiểm tra nếu chọn Pay Later nhưng chưa đăng ký
+      if (selectedPayment === 5 && !isRegistered) {
+        Alert.alert(
+          "Chưa đăng ký Pay Later",
+          "Bạn cần đăng ký SPayLater trước khi sử dụng. Bạn có muốn đăng ký ngay không?",
+          [
+            { text: "Hủy", style: "cancel" },
+            {
+              text: "Đăng ký ngay",
+              onPress: () => router.push("/spaylater/register"),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Kiểm tra hạn mức khả dụng nếu chọn Pay Later
+      if (selectedPayment === 5 && customer) {
+        if (total > customer.availableCredit) {
+          Alert.alert(
+            "Hạn mức không đủ",
+            `Đơn hàng ${formatPrice(
+              total
+            )} vượt quá hạn mức khả dụng của bạn (${formatPrice(
+              customer.availableCredit
+            )}).`
+          );
+          return;
+        }
+      }
+
+      if (!hasAddress || !shippingName || !shippingPhone || !shippingAddress) {
+        Alert.alert(
+          "Thông tin giao hàng",
+          "Vui lòng cung cấp đầy đủ thông tin giao hàng để tiếp tục.",
+          [
+            {
+              text: "Nhập thông tin",
+              onPress: () => setShowAddressModal(true),
+            },
+          ]
+        );
+        return;
+      }
+
+      setLoading(true);
+
       const items = cart.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
       }));
 
       const body = {
-        customerId: 1, // ⚠ TODO: lấy từ user login
+        customerId: user.id,
         items,
-        shippingName: address.name,
-        shippingPhone: address.phone,
-        shippingAddress: address.address,
+        shippingName: shippingName.trim(),
+        shippingPhone: shippingPhone.trim(),
+        shippingAddress: shippingAddress.trim(),
         paymentMethod: getPaymentMethodCode(selectedPayment),
-        note,
+        note: note.trim(),
+        advancePaymentAmount: 0,
       };
+
+      console.log("Creating order with:", body);
+
+      // Tạo đơn hàng
       const result = await orderService.createOrder(body);
 
       if (!result.success || !result.data) {
-        // Xử lý lỗi trả về từ service
-        Alert.alert("Đặt hàng thất bại", result.error || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+        Alert.alert(
+          "Đặt hàng thất bại",
+          result.error || "Không thể tạo đơn hàng. Vui lòng thử lại."
+        );
         return;
       }
-      
-      // 3. THÀNH CÔNG
-      clearCart();
-      
-      // Chuyển sang màn hình thành công và truyền dữ liệu đơn hàng
-      router.push({
-        pathname: "/order_success",
-        // Chuyển đối tượng đơn hàng thành chuỗi JSON an toàn
-        params: { 
-          orderData: JSON.stringify(result.data) 
-        },
+
+      console.log("Order created:", result.data);
+      if (selectedPayment === 2) {
+      try {
+      const momoResponse = await momoService.createPayment({
+          orderId: result.data.orderNumber,
+          amount: total,
+          orderInfo: `Thanh toán đơn hàng ${result.data.orderNumber}`,
       });
 
+        if (momoResponse.success && momoResponse.payUrl) {
+          // Mở MoMo app hoặc web
+          const momoDeeplink = momoResponse.deeplink || momoResponse.payUrl;
+      
+          const canOpen = await Linking.canOpenURL(momoDeeplink);
+          if (canOpen) {
+            await Linking.openURL(momoDeeplink);
+            clearCart();
+            
+            // Chuyển đến trang chờ xác nhận thanh toán
+            router.push({
+              pathname: "/pending",
+              params: {
+                orderNumber: result.data.orderNumber,
+              },
+            });
+          } else {
+            Alert.alert("Lỗi", "Không thể mở trang thanh toán MoMo");
+          }
+          return;
+        } else {
+          Alert.alert(
+            "Lỗi thanh toán",
+            momoResponse.message || "Không thể tạo yêu cầu thanh toán MoMo"
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("MoMo payment error:", error);
+        Alert.alert(
+          "Lỗi",
+          "Có lỗi xảy ra khi tạo thanh toán MoMo"
+        );
+        return;
+      }
+    }
+      // Nếu chọn Pay Later, tạo transaction trong SPayLater
+      if (selectedPayment === 5 && result.data.id) {
+        const transactionResult = await createTransaction(
+          result.data.id,
+          total
+        );
+
+        // IMPORTANT: Only create transaction if remainingAmount > 0
+        if (!transactionResult.success) {
+          
+          console.log("Transaction result:", transactionResult);
+
+          if (!transactionResult.success) {
+            // Nếu tạo transaction thất bại, thông báo cho user
+            Alert.alert(
+              "Cảnh báo",
+              `Đơn hàng đã được tạo nhưng có lỗi khi tạo giao dịch Pay Later: ${transactionResult.error}\n\nVui lòng liên hệ hỗ trợ.`,
+              [
+                {
+                  text: "OK",
+                  onPress: () => {
+                    clearCart();
+                    router.push({
+                      pathname: "/order_success",
+                      params: {
+                        orderData: JSON.stringify(result.data),
+                        usedPayLater: "true",
+                      },
+                    });
+                  },
+                },
+              ]
+            );
+            return;
+          }
+        }
+      }
+
+      clearCart();
+
+      router.push({
+        pathname: "/order_success",
+        params: {
+          orderData: JSON.stringify(result.data),
+          usedPayLater: selectedPayment === 5 ? "true" : "false",
+        },
+      });
     } catch (error) {
       console.error("Lỗi không mong muốn:", error);
-      Alert.alert("Lỗi", "Có lỗi hệ thống xảy ra. Vui lòng kiểm tra kết nối mạng.");
+      Alert.alert(
+        "Lỗi",
+        "Có lỗi hệ thống xảy ra. Vui lòng kiểm tra kết nối mạng."
+      );
+    } finally {
+      setLoading(false);
     }
-};
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
-      <View className="bg-white px-4 py-4 border-b border-gray-100 flex-row items-center">
+      <View className="bg-white px-4 py-4 border-b border-gray-100 flex-row items-center justify-between">
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-900 ml-4">
-          Thanh toán
-        </Text>
+        <Text className="text-2xl text-gray-900 ">Thanh toán</Text>
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -163,30 +364,35 @@ export default function CheckoutScreen() {
                 Địa chỉ giao hàng
               </Text>
             </View>
-            <TouchableOpacity>
-              <Text className="text-blue-600 font-medium text-sm">Thay đổi</Text>
+            <TouchableOpacity onPress={() => setShowAddressModal(true)}>
+              <Text className="text-blue-600 font-medium text-sm">
+                {hasAddress ? "Thay đổi" : "Thêm địa chỉ"}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {addresses
-            .filter((addr) => addr.id === selectedAddress)
-            .map((addr) => (
-              <View key={addr.id} className="bg-gray-50 rounded-xl p-4">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-gray-900 font-semibold">
-                    {addr.name} | {addr.phone}
-                  </Text>
-                  {addr.isDefault && (
-                    <View className="bg-blue-100 px-2 py-1 rounded">
-                      <Text className="text-blue-600 text-xs font-medium">
-                        Mặc định
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Text className="text-gray-600 text-sm">{addr.address}</Text>
+          {hasAddress ? (
+            <View className="bg-gray-50 rounded-xl p-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-gray-900 font-semibold">
+                  {shippingName} | {shippingPhone}
+                </Text>
               </View>
-            ))}
+              <Text className="text-gray-600 text-sm">{shippingAddress}</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              className="bg-blue-50 rounded-xl p-4 border-2 border-dashed border-blue-300"
+              onPress={() => setShowAddressModal(true)}
+            >
+              <View className="flex-row items-center justify-center">
+                <Ionicons name="add-circle-outline" size={24} color="#2563EB" />
+                <Text className="text-blue-600 font-semibold ml-2">
+                  Thêm địa chỉ giao hàng
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Products */}
@@ -199,7 +405,10 @@ export default function CheckoutScreen() {
           </View>
 
           {cart.map((item) => (
-            <View key={item.id} className="flex-row mb-4 pb-4 border-b border-gray-100">
+            <View
+              key={item.id}
+              className="flex-row mb-4 pb-4 border-b border-gray-100"
+            >
               <Image
                 source={{ uri: item.image }}
                 className="w-16 h-16 rounded-xl"
@@ -229,7 +438,7 @@ export default function CheckoutScreen() {
             </Text>
           </View>
           <View className="flex-row items-center">
-            <View className="flex-1 flex-row items-center bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+            <View className="flex-1 flex-row items-center bg-gray-50 rounded-xl px-4 py-1 border border-gray-200">
               <Ionicons name="ticket-outline" size={20} color="#9CA3AF" />
               <TextInput
                 placeholder="Nhập mã giảm giá"
@@ -259,16 +468,16 @@ export default function CheckoutScreen() {
               key={method.id}
               className={`flex-row items-center p-4 rounded-xl mb-3 border ${
                 selectedPayment === method.id
-                  ? 'bg-blue-50 border-blue-600'
-                  : 'bg-gray-50 border-gray-200'
+                  ? "bg-blue-50 border-blue-600"
+                  : "bg-gray-50 border-gray-200"
               }`}
               onPress={() => setSelectedPayment(method.id)}
             >
               <View
                 className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
                   selectedPayment === method.id
-                    ? 'border-blue-600'
-                    : 'border-gray-300'
+                    ? "border-blue-600"
+                    : "border-gray-300"
                 }`}
               >
                 {selectedPayment === method.id && (
@@ -278,13 +487,13 @@ export default function CheckoutScreen() {
               <Ionicons
                 name={method.icon as any}
                 size={24}
-                color={selectedPayment === method.id ? '#2563EB' : '#6B7280'}
+                color={selectedPayment === method.id ? "#2563EB" : "#6B7280"}
               />
               <Text
                 className={`ml-3 font-medium ${
                   selectedPayment === method.id
-                    ? 'text-blue-600'
-                    : 'text-gray-700'
+                    ? "text-blue-600"
+                    : "text-gray-700"
                 }`}
               >
                 {method.name}
@@ -292,6 +501,67 @@ export default function CheckoutScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* SPayLater Info */}
+        {selectedPayment === 5 && customer && (
+          <View className="mt-4 mx-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <Text className="text-blue-800 font-semibold mb-2">
+              🎉 Mua Trước - Trả Sau
+            </Text>
+
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-gray-600 text-sm">Hạn mức Tín dụng:</Text>
+              {loadingSPayLater ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <Text className="text-blue-700 font-bold text-sm">
+                  {formatPrice(customer.creditLimit)}
+                </Text>
+              )}
+            </View>
+
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-gray-600 text-sm">Hạn mức Khả dụng:</Text>
+              {loadingSPayLater ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <Text className="text-blue-700 font-bold text-sm">
+                  {formatPrice(customer.availableCredit)}
+                </Text>
+              )}
+            </View>
+
+            <View className="border-t border-blue-200 pt-3 mt-3">
+              <View className="bg-white rounded-lg p-3">
+                <View className="flex-row justify-between items-center mb-2">
+                  <Text className="text-gray-700 font-medium">Trả ngay:</Text>
+                  <Text className="text-green-600 font-bold text-lg">0 ₫</Text>
+                </View>
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-gray-700 font-medium">
+                    Trả sau (30 ngày):
+                  </Text>
+                  <Text className="text-orange-600 font-bold text-lg">
+                    {formatPrice(total)}
+                  </Text>
+                </View>
+              </View>
+
+              <Text className="text-blue-600 text-xs mt-2 text-center">
+                💡 Bạn không cần trả gì bây giờ. Sau 30 ngày, vui lòng thanh
+                toán {formatPrice(total)}
+              </Text>
+            </View>
+
+            {total > customer.availableCredit && (
+              <View className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <Text className="text-red-600 text-sm">
+                  ⚠️ Đơn hàng vượt quá hạn mức khả dụng của bạn!
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Note */}
         <View className="bg-white mt-2 px-4 py-4">
@@ -336,13 +606,24 @@ export default function CheckoutScreen() {
               -{formatPrice(discount)}
             </Text>
           </View>
+          {selectedPayment === 5 && spaylaterAdvancePayment > 0 && (
+            <View className="flex-row justify-between mb-3">
+              <Text className="text-red-500">Ứng trước Pay Later</Text>
+              <Text className="text-red-600 font-medium">
+                -{formatPrice(spaylaterAdvancePayment)}
+              </Text>
+            </View>
+          )}
+
           <View className="border-t border-gray-200 pt-3 mt-2">
             <View className="flex-row justify-between">
               <Text className="text-gray-900 font-bold text-lg">
-                Tổng thanh toán
+                {selectedPayment === 5 ? "Trả sau 30 ngày" : "Tổng thanh toán"}
               </Text>
               <Text className="text-blue-600 font-bold text-xl">
-                {formatPrice(total)}
+                {selectedPayment === 5
+                  ? formatPrice(total)
+                  : formatPrice(finalTotal)}
               </Text>
             </View>
           </View>
@@ -353,21 +634,110 @@ export default function CheckoutScreen() {
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4">
         <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-gray-500 text-sm">Tổng thanh toán</Text>
+            <Text className="text-gray-500 text-sm">
+              {selectedPayment === 5 ? "Trả sau 30 ngày" : "Tổng thanh toán"}
+            </Text>
             <Text className="text-blue-600 font-bold text-xl">
-              {formatPrice(total)}
+              {selectedPayment === 5
+                ? formatPrice(total)
+                : formatPrice(finalTotal)}
             </Text>
           </View>
           <TouchableOpacity
-            className="bg-blue-600 rounded-xl py-4 px-8"
+            className={`rounded-xl py-4 px-8 ${
+              loading ? "bg-gray-400" : "bg-blue-600"
+            }`}
             onPress={handlePlaceOrder}
+            disabled={loading}
           >
-            <Text className="text-white font-semibold text-base">
-              Đặt hàng
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="text-white font-semibold text-base">
+                {selectedPayment === 5 ? "Mua ngay, trả sau" : "Đặt hàng"}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Address Modal */}
+      <Modal
+        visible={showAddressModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddressModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <View
+            className="bg-white rounded-t-3xl px-4 pt-6 pb-8"
+            style={{ maxHeight: "80%" }}
+          >
+            <View className="flex-row items-center justify-between mb-6">
+              <Text className="text-xl font-bold text-gray-900">
+                Thông tin giao hàng
+              </Text>
+              <TouchableOpacity onPress={() => setShowAddressModal(false)}>
+                <Ionicons name="close" size={28} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium mb-2">
+                  Họ tên người nhận <Text className="text-red-500">*</Text>
+                </Text>
+                <TextInput
+                  placeholder="Nhập họ tên"
+                  value={shippingName}
+                  onChangeText={setShippingName}
+                  className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900 border border-gray-200"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-gray-700 font-medium mb-2">
+                  Số điện thoại <Text className="text-red-500">*</Text>
+                </Text>
+                <TextInput
+                  placeholder="Nhập số điện thoại"
+                  value={shippingPhone}
+                  onChangeText={setShippingPhone}
+                  keyboardType="phone-pad"
+                  className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900 border border-gray-200"
+                  placeholderTextColor="#9CA3AF"
+                />
+              </View>
+
+              <View className="mb-6">
+                <Text className="text-gray-700 font-medium mb-2">
+                  Địa chỉ giao hàng <Text className="text-red-500">*</Text>
+                </Text>
+                <TextInput
+                  placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố"
+                  value={shippingAddress}
+                  onChangeText={setShippingAddress}
+                  multiline
+                  numberOfLines={3}
+                  className="bg-gray-50 rounded-xl px-4 py-3 text-gray-900 border border-gray-200"
+                  placeholderTextColor="#9CA3AF"
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <TouchableOpacity
+                className="bg-blue-600 rounded-xl py-4 items-center"
+                onPress={handleSaveAddress}
+              >
+                <Text className="text-white font-bold text-base">
+                  Lưu địa chỉ
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

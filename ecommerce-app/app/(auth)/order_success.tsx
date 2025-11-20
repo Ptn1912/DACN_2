@@ -4,13 +4,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface ActualOrderItem {
   id: number;
@@ -110,11 +110,11 @@ export default function OrderSuccessScreen() {
   }));
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
-  };
+  return Number(price).toLocaleString('vi-VN') + ' ₫';
+};
 
   const handleContinueShopping = () => {
-    router.push('/');
+    router.push('/(customer-tabs)/mall');
   };
 
   const handleViewOrderDetails = () => {

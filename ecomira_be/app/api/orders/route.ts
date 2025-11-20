@@ -31,10 +31,8 @@ export async function GET(request: NextRequest) {
     let where: any = {};
 
     if (userType === 'customer') {
-      // Customer sees their own orders
       where.customerId = userId;
     } else if (userType === 'seller') {
-      // Seller sees orders containing their products
       where.items = {
         some: {
           sellerId: userId,
@@ -114,6 +112,7 @@ export async function POST(request: NextRequest) {
       shippingAddress,
       paymentMethod,
       note,
+      advancePaymentAmount = 0,
     } = body;
 
     // Validation
@@ -131,6 +130,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    
     // Verify customer exists
     const customer = await prisma.user.findUnique({
       where: { id: customerId },
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    const shippingFee = 30000; // Fixed shipping fee
+    const shippingFee = 30000;
     totalAmount += shippingFee;
 
     // Create order with items

@@ -60,7 +60,7 @@ export type PaymentMethod =
   | 'credit_card'
   | 'pay_later';
 
-export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
 export interface OrderListResponse {
   success: boolean;
@@ -81,7 +81,11 @@ export interface OrderResponse {
   data?: Order;
   error?: string;
 }
-
+export interface UserAddress {
+  shippingName: string;
+  shippingPhone: string;
+  shippingAddress: string;
+}
 export const orderService = {
   /**
    * Get orders list
@@ -157,6 +161,7 @@ export const orderService = {
     shippingAddress: string;
     paymentMethod: PaymentMethod;
     note?: string;
+    advancePaymentAmount?: number;
   }): Promise<OrderResponse> {
     try {
       const response = await api.post('/orders', data);
@@ -171,6 +176,29 @@ export const orderService = {
         success: false,
         error: error.response?.data?.error || 'Không thể tạo đơn hàng',
       };
+    }
+  },
+
+  /**
+   * Lấy địa chỉ giao hàng từ đơn hàng gần nhất
+   */
+  async getLastShippingAddress(userId: number): Promise<UserAddress | null> {
+    try {
+      const response = await api.get(`/orders?userId=${userId}&userType=customer&limit=1`);
+      
+      if (response.data.orders && response.data.orders.length > 0) {
+        const lastOrder = response.data.orders[0];
+        return {
+          shippingName: lastOrder.shippingName,
+          shippingPhone: lastOrder.shippingPhone,
+          shippingAddress: lastOrder.shippingAddress,
+        };
+      }
+      
+      return null;
+    } catch (error: any) {
+      console.error('Get last shipping address error:', error);
+      return null;
     }
   },
 
@@ -223,6 +251,34 @@ export const orderService = {
       };
     }
   },
+
+  async getOrderPaymentStatus(orderNumber: string): Promise<{
+  success: boolean;
+  paymentStatus?: PaymentStatus;
+  error?: string;
+}> {
+  try {
+    const response = await api.get(`/orders?orderNumber=${orderNumber}&limit=1`);
+    
+    if (response.data.orders && response.data.orders.length > 0) {
+      return {
+        success: true,
+        paymentStatus: response.data.orders[0].paymentStatus,
+      };
+    }
+    
+    return {
+      success: false,
+      error: 'Không tìm thấy đơn hàng',
+    };
+  } catch (error: any) {
+    console.error('Get payment status error:', error);
+    return {
+      success: false,
+      error: error.response?.data?.error || 'Không thể kiểm tra trạng thái thanh toán',
+    };
+  }
+},
 
   /**
    * Phương thức xác nhận đơn hàng (Pending -> Confirmed)
