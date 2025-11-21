@@ -227,7 +227,7 @@ export default function NotificationsScreen() {
       
       {/* Header with Gradient */}
       <LinearGradient
-        colors={['#3B82F6', '#2563EB']}
+        colors={["#3B82F6", "#9333EA"]} // blue-500 to purple-600
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         className="px-4 pt-4 pb-6"

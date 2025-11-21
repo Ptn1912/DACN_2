@@ -1,5 +1,6 @@
 // app/(tabs)/profile.tsx
-import React from "react";
+import React, { act } from "react";
+import { useOrders } from "../../hooks/useOrders";
 import {
   View,
   Text,
@@ -14,10 +15,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from "react-native-safe-area-context";
+import cart from "./cart";
 
 export default function ProfileScreen() {
   const { user, isLoading, logout } = useAuth();
+  const { orders, isLoading: ordersLoading, refresh: refreshOrders } = useOrders(user?.id);
 
   const handleLogout = () => {
     Alert.alert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", [
@@ -30,7 +33,7 @@ export default function ProfileScreen() {
     ]);
   };
 
-  if (isLoading) {
+  if (ordersLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#3B82F6" />
@@ -38,6 +41,13 @@ export default function ProfileScreen() {
       </SafeAreaView>
     );
   }
+
+  const orderCounts = {
+  confirmed: orders.filter(o => o.status === "confirmed").length,
+  shipping: orders.filter(o => o.status === "shipping").length,
+  delivered: orders.filter(o => o.status === "delivered").length,
+};
+
   const menuItems = [
     {
       id: 1,
@@ -45,6 +55,7 @@ export default function ProfileScreen() {
       title: "Đơn hàng của tôi",
       subtitle: "Xem lịch sử đơn hàng",
       color: "#3B82F6",
+      route: "/(customer-tabs)/all_orders"
     },
     {
       id: 2,
@@ -52,6 +63,7 @@ export default function ProfileScreen() {
       title: "Sản phẩm yêu thích",
       subtitle: "Danh sách yêu thích",
       color: "#EF4444",
+      route: undefined,
     },
     {
       id: 3,
@@ -59,6 +71,7 @@ export default function ProfileScreen() {
       title: "Địa chỉ giao hàng",
       subtitle: "Quản lý địa chỉ",
       color: "#10B981",
+      route: undefined,
     },
     {
       id: 4,
@@ -66,13 +79,15 @@ export default function ProfileScreen() {
       title: "Phương thức thanh toán",
       subtitle: "Thẻ & Ví điện tử",
       color: "#F59E0B",
+      route: undefined,
     },
     {
       id: 5,
       icon: "notifications-outline",
       title: "Thông báo",
       subtitle: "Cài đặt thông báo",
-      color: "#8B5CF6",
+      color: "#8B5CF6", 
+      route: "/(customer-tabs)/notifications",
     },
     {
       id: 6,
@@ -80,11 +95,18 @@ export default function ProfileScreen() {
       title: "Cài đặt",
       subtitle: "Cài đặt tài khoản",
       color: "#6B7280",
+      route: undefined,
     },
   ];
 
   const quickActions = [
-    { id: 1, icon: "wallet-outline", title: "Ví", count: "2.5M" },
+    {
+      id: 1,
+      icon: "wallet-outline",
+      title: "SPayLater",
+      count: "₫ 2.5M",
+      onPress: (router: any) => router.push("/spaylater"),
+    },
     { id: 2, icon: "gift-outline", title: "Voucher", count: "12" },
     { id: 3, icon: "star-outline", title: "Điểm", count: "850" },
   ];
@@ -111,10 +133,31 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" />
-
       {/* Header */}
-      <View className="bg-white px-4 py-4 border-b border-gray-100">
-        <Text className="text-2xl font-bold text-gray-900">Tài khoản</Text>
+      <View className="bg-white px-4 pt-4 pb-2 border-b border-gray-100">
+        <View className="flex-row items-center justify-end mb-4">
+          <View className="flex-row space-x-3">
+            <TouchableOpacity
+              className="relative mr-4"
+              onPress={() => router.push("/(customer-tabs)/cart")}
+            >
+              <Ionicons name="cart-outline" size={26} color="#1F2937" />
+              <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
+                <Text className="text-white text-xs font-bold">{cart.length}</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity className="relative">
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={26}
+                color="#1F2937"
+              />
+              <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
+                <Text className="text-white text-xs font-bold">3</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -156,6 +199,7 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 key={action.id}
                 className="bg-white/20 rounded-xl p-3 items-center flex-1 mx-1"
+                onPress={() => action.onPress?.(router)}
               >
                 <Ionicons name={action.icon as any} size={24} color="#fff" />
                 <Text className="text-white font-semibold text-xs mt-2">
@@ -175,47 +219,54 @@ export default function ProfileScreen() {
             <Text className="text-gray-900 font-bold text-base">
               Đơn hàng của tôi
             </Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/(customer-tabs)/all_orders")}>
               <Text className="text-blue-600 font-medium text-sm">
                 Xem tất cả
               </Text>
             </TouchableOpacity>
           </View>
+
           <View className="flex-row justify-between">
             {[
-              { icon: "wallet", label: "Chờ thanh toán", count: 2 },
-              { icon: "cube", label: "Đang giao", count: 1 },
-              { icon: "checkmark-circle", label: "Hoàn thành", count: 15 },
-              { icon: "return-down-back", label: "Trả hàng", count: 0 },
-            ].map((status, index) => (
-              <TouchableOpacity key={index} className="items-center flex-1">
-                <View className="relative">
-                  <Ionicons
-                    name={status.icon as any}
-                    size={28}
-                    color="#2563EB"
-                  />
-                  {status.count > 0 && (
-                    <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
-                      <Text className="text-white text-xs font-bold">
-                        {status.count}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Text className="text-gray-600 text-xs mt-2 text-center">
-                  {status.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+              { icon: "wallet", label: "Chờ thanh toán", statusKey: "confirmed" },
+              { icon: "cube", label: "Đang giao", statusKey: "shipping" },
+              { icon: "checkmark-circle", label: "Hoàn thành", statusKey: "delivered" },
+              { icon: "return-down-back", label: "Trả hàng", statusKey: "returned" },
+            ].map((status, index) => {
+              const count = orderCounts[status.statusKey as keyof typeof orderCounts] || orders.length;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  className="items-center flex-1"
+                  onPress={() =>
+                    router.push(`/(customer-tabs)/all_orders?status=${status.statusKey}`)
+                  }
+                >
+                  <View className="relative">
+                    <Ionicons name={status.icon as any} size={28} color="#2563EB" />
+                    {count > 0 && (
+                      <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
+                        <Text className="text-white text-xs font-bold">{count}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text className="text-gray-600 text-xs mt-2 text-center">
+                    {status.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
+
 
         {/* Menu Items */}
         <View className="mx-4 mt-4">
           {menuItems.map((item) => (
             <TouchableOpacity
               key={item.id}
+              onPress={() => router.push(item.route)}
               className="bg-white rounded-2xl p-4 mb-3 flex-row items-center"
             >
               <View

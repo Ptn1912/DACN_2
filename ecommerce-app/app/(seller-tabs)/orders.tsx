@@ -1,5 +1,5 @@
 // app/(tabs)/orders.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,18 +25,15 @@ export default function OrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<OrderStatus | 'all'>('all');
 
-  useEffect(() => {
-    fetchOrders();
-  }, [activeFilter]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user?.id) return;
 
     try {
       setLoading(true);
       const result = await orderService.getOrders({
         userId: user.id,
-        userType: 'customer',
+        userType: 'seller',
         ...(activeFilter !== 'all' && { status: activeFilter }),
         limit: 100,
       });
@@ -46,33 +43,58 @@ export default function OrdersScreen() {
       }
     } catch (error) {
       console.error('Fetch orders error:', error);
+      Alert.alert('Lỗi', 'Không thể tải đơn hàng. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, activeFilter]);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchOrders();
     setRefreshing(false);
-  };
+  }, [fetchOrders]);
 
-  const handleCancelOrder = (orderId: number) => {
+  const stats = useMemo(() => {
+    return {
+      all: orders.length,
+      pending: orders.filter((o) => o.status === 'pending').length,
+      confirmed: orders.filter((o) => o.status === 'confirmed').length,
+      shipping: orders.filter((o) => o.status === 'shipping').length,
+      delivered: orders.filter((o) => o.status === 'delivered').length,
+      cancelled: orders.filter((o) => o.status === 'cancelled').length,
+    };
+  }, [orders]);
+
+  const filterTabs = useMemo(() => ([
+    { key: 'all' as const, text: 'Tất cả', count: stats.all, colors: ['#3B82F6', '#2563EB'], textInactive: 'text-gray-500', textActive: 'text-blue-100', bgActive: 'text-white' },
+    { key: 'pending' as const, text: 'Chờ xác nhận', count: stats.pending, colors: ['#F59E0B', '#D97706'], textInactive: 'text-gray-500', textActive: 'text-orange-100', bgActive: 'text-white' },
+    { key: 'confirmed' as const, text: 'Đã xác nhận', count: stats.confirmed, colors: ['#3B82F6', '#2563EB'], textInactive: 'text-gray-500', textActive: 'text-blue-100', bgActive: 'text-white' },
+    { key: 'shipping' as const, text: 'Đang giao', count: stats.shipping, colors: ['#06B6D4', '#0891B2'], textInactive: 'text-gray-500', textActive: 'text-cyan-100', bgActive: 'text-white' },
+    { key: 'delivered' as const, text: 'Đã giao', count: stats.delivered, colors: ['#10B981', '#059669'], textInactive: 'text-gray-500', textActive: 'text-green-100', bgActive: 'text-white' },
+    { key: 'cancelled' as const, text: 'Đã hủy', count: stats.cancelled, colors: ['#EF4444', '#B91C1C'], textInactive: 'text-gray-500', textActive: 'text-red-100', bgActive: 'text-white' },
+  ]), [stats]);
+
+  const handleUpdateStatus = (orderId: number, targetStatus: OrderStatus, successMessage: string, updateFunction: (id: number) => Promise<{ success: boolean; error?: string }>) => {
     Alert.alert(
-      'Hủy đơn hàng',
-      'Bạn có chắc muốn hủy đơn hàng này?',
+      'Xác nhận hành động',
+      `Bạn có chắc muốn chuyển đơn hàng này sang trạng thái "${getStatusInfo(targetStatus).text}"?`,
       [
         { text: 'Không', style: 'cancel' },
         {
-          text: 'Hủy đơn',
-          style: 'destructive',
+          text: getStatusInfo(targetStatus).text,
+          style: 'default',
           onPress: async () => {
-            const result = await orderService.cancelOrder(orderId);
+            const result = await updateFunction(orderId);
             if (result.success) {
-              Alert.alert('Thành công', 'Đã hủy đơn hàng');
+              Alert.alert('Thành công', successMessage);
               fetchOrders();
             } else {
-              Alert.alert('Lỗi', result.error || 'Không thể hủy đơn hàng');
+              Alert.alert('Lỗi', result.error || 'Không thể thực hiện hành động này.');
             }
           },
         },
@@ -80,9 +102,36 @@ export default function OrdersScreen() {
     );
   };
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
+  const handleConfirmOrder = (orderId: number) => {
+    console.log('Order ID passed to handleUpdateStatus:', orderId);
+    handleUpdateStatus(orderId, 'confirmed', 'Đã xác nhận đơn hàng thành công.', (id) => orderService.confirmOrder(id));
   };
+
+  // Nút Hủy đơn
+  const handleCancelOrder = (orderId: number) => {
+    handleUpdateStatus(orderId, 'cancelled', 'Đã hủy đơn hàng thành công.', (id) => orderService.cancelOrder(id));
+  };
+
+  // Nút Chuẩn bị xong/Bắt đầu giao (Confirmed/Preparing -> Shipping) - Giả định API
+  const handleShipOrder = (orderId: number) => {
+    // Tùy thuộc vào business logic, API này có thể là 'shipOrder'
+    // Giả định orderService có hàm shipOrder
+    handleUpdateStatus(orderId, 'shipping', 'Đơn hàng đã được chuyển sang trạng thái Đang giao.', (id) => orderService.shipOrder(id));
+  };
+
+  // Hiển thị Loading toàn màn hình khi mới vào
+  if (loading && orders.length === 0 && !refreshing) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text className="text-gray-600 mt-4">Đang tải đơn hàng...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const formatPrice = (price: number) => {
+  return Number(price).toLocaleString('vi-VN') + ' ₫';
+};
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('vi-VN', {
@@ -143,22 +192,6 @@ export default function OrdersScreen() {
     return statusMap[status] || statusMap.pending;
   };
 
-  const stats = {
-    all: orders.length,
-    pending: orders.filter((o) => o.status === 'pending').length,
-    shipping: orders.filter((o) => o.status === 'shipping').length,
-    delivered: orders.filter((o) => o.status === 'delivered').length,
-  };
-
-  if (loading && orders.length === 0) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text className="text-gray-600 mt-4">Đang tải đơn hàng...</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" />
@@ -171,156 +204,72 @@ export default function OrdersScreen() {
         className="px-4 pt-4 pb-6"
       >
         <Text className="text-white text-2xl font-bold mb-1">
-          Đơn hàng của tôi
+          Đơn hàng của Shop
         </Text>
         <Text className="text-blue-100 text-sm">
-          {stats.all} đơn hàng
+          Bạn có tổng cộng **{stats.all}** đơn hàng cần xử lý
         </Text>
       </LinearGradient>
 
       {/* Filter Tabs */}
       <View className="px-4 -mt-3">
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <TouchableOpacity
-            onPress={() => setActiveFilter('all')}
-            className="mr-3"
-          >
-            <LinearGradient
-              colors={
-                activeFilter === 'all'
-                  ? ['#3B82F6', '#2563EB']
-                  : ['#FFFFFF', '#FFFFFF']
-              }
-              className="px-5 py-4 rounded-2xl shadow-sm"
-              style={{ minWidth: 100 }}
+          {filterTabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => setActiveFilter(tab.key)}
+              className="mr-3"
             >
-              <Text
-                className={`text-xs font-medium mb-1 ${
-                  activeFilter === 'all' ? 'text-blue-100' : 'text-gray-500'
-                }`}
+              <LinearGradient
+                colors={
+                  (activeFilter === tab.key 
+                    ? tab.colors 
+                    : ['#FFFFFF', '#FFFFFF']) as [string, string, ...string[]]
+                }
+                className="px-5 py-4 rounded-2xl shadow-md border border-gray-100"
+                style={{ minWidth: 120, elevation: activeFilter === tab.key ? 5 : 2 }} // Elevation cho Android shadow
               >
-                Tất cả
-              </Text>
-              <Text
-                className={`font-bold text-lg ${
-                  activeFilter === 'all' ? 'text-white' : 'text-gray-900'
-                }`}
-              >
-                {stats.all}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveFilter('pending')}
-            className="mr-3"
-          >
-            <LinearGradient
-              colors={
-                activeFilter === 'pending'
-                  ? ['#F59E0B', '#D97706']
-                  : ['#FFFFFF', '#FFFFFF']
-              }
-              className="px-5 py-4 rounded-2xl shadow-sm"
-              style={{ minWidth: 100 }}
-            >
-              <Text
-                className={`text-xs font-medium mb-1 ${
-                  activeFilter === 'pending' ? 'text-orange-100' : 'text-gray-500'
-                }`}
-              >
-                Chờ xác nhận
-              </Text>
-              <Text
-                className={`font-bold text-lg ${
-                  activeFilter === 'pending' ? 'text-white' : 'text-gray-900'
-                }`}
-              >
-                {stats.pending}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveFilter('shipping')}
-            className="mr-3"
-          >
-            <LinearGradient
-              colors={
-                activeFilter === 'shipping'
-                  ? ['#06B6D4', '#0891B2']
-                  : ['#FFFFFF', '#FFFFFF']
-              }
-              className="px-5 py-4 rounded-2xl shadow-sm"
-              style={{ minWidth: 100 }}
-            >
-              <Text
-                className={`text-xs font-medium mb-1 ${
-                  activeFilter === 'shipping' ? 'text-cyan-100' : 'text-gray-500'
-                }`}
-              >
-                Đang giao
-              </Text>
-              <Text
-                className={`font-bold text-lg ${
-                  activeFilter === 'shipping' ? 'text-white' : 'text-gray-900'
-                }`}
-              >
-                {stats.shipping}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setActiveFilter('delivered')}
-            className="mr-3"
-          >
-            <LinearGradient
-              colors={
-                activeFilter === 'delivered'
-                  ? ['#10B981', '#059669']
-                  : ['#FFFFFF', '#FFFFFF']
-              }
-              className="px-5 py-4 rounded-2xl shadow-sm"
-              style={{ minWidth: 100 }}
-            >
-              <Text
-                className={`text-xs font-medium mb-1 ${
-                  activeFilter === 'delivered' ? 'text-green-100' : 'text-gray-500'
-                }`}
-              >
-                Đã giao
-              </Text>
-              <Text
-                className={`font-bold text-lg ${
-                  activeFilter === 'delivered' ? 'text-white' : 'text-gray-900'
-                }`}
-              >
-                {stats.delivered}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+                <Text
+                  className={`text-xs font-medium mb-1 ${activeFilter === tab.key ? tab.textActive : tab.textInactive
+                    }`}
+                >
+                  {tab.text}
+                </Text>
+                <Text
+                  className={`font-bold text-lg ${activeFilter === tab.key ? tab.bgActive : 'text-gray-900'
+                    }`}
+                >
+                  {tab.count}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
       </View>
 
       {/* Orders List */}
+      {/* --- DANH SÁCH ĐƠN HÀNG --- */}
       <ScrollView
         className="flex-1 px-4 pt-4"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
         }
       >
         {orders.length > 0 ? (
           orders.map((order) => {
             const statusInfo = getStatusInfo(order.status);
+            const isPending = order.status === 'pending';
+            const isConfirmed = order.status === 'confirmed' || order.status === 'preparing';
+            const isShipped = order.status === 'shipping';
+            const isDelivered = order.status === 'delivered';
 
             return (
               <TouchableOpacity
                 key={order.id}
-                className="bg-white rounded-3xl p-4 mb-3 shadow-sm border border-gray-100"
-                onPress={() => router.push(`/order/${order.id}`)}
-                activeOpacity={0.7}
+                className="bg-white rounded-xl p-4 mb-3 shadow-md border border-gray-100"
+                onPress={() => router.push(`/(seller-tabs)/order/[id]`)}
+                activeOpacity={0.8}
               >
                 {/* Order Header */}
                 <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-gray-100">
@@ -337,7 +286,7 @@ export default function OrdersScreen() {
                     </View>
                     <View className="flex-1">
                       <Text className="text-gray-900 font-bold text-base">
-                        {order.orderNumber}
+                        #{order.orderNumber}
                       </Text>
                       <Text className="text-gray-500 text-xs mt-0.5">
                         {formatDate(order.createdAt)}
@@ -357,13 +306,13 @@ export default function OrdersScreen() {
                   </View>
                 </View>
 
-                {/* Order Items */}
+                {/* Order Items Summary */}
                 <View className="mb-3">
                   {order.items.slice(0, 2).map((item, index) => (
                     <View key={index} className="flex-row items-center mb-2">
                       <Image
-                        source={{ uri: item.image || item.product.images[0] }}
-                        className="w-12 h-12 rounded-xl"
+                        source={{ uri: item.image || item.product.images[0] || 'https://via.placeholder.com/50' }}
+                        className="w-12 h-12 rounded-lg border border-gray-200"
                         resizeMode="cover"
                       />
                       <View className="flex-1 ml-3">
@@ -383,7 +332,7 @@ export default function OrdersScreen() {
                     </View>
                   ))}
                   {order.items.length > 2 && (
-                    <Text className="text-gray-500 text-xs text-center mt-1">
+                    <Text className="text-gray-500 text-xs text-center mt-1 italic">
                       +{order.items.length - 2} sản phẩm khác
                     </Text>
                   )}
@@ -393,45 +342,73 @@ export default function OrdersScreen() {
                 <View className="pt-3 border-t border-gray-100">
                   <View className="flex-row items-center justify-between">
                     <Text className="text-gray-600 text-sm">
-                      Tổng tiền ({order.items.length} sản phẩm):
+                      Tổng tiền ({order.items.length} SP):
                     </Text>
-                    <Text className="text-blue-600 font-bold text-lg">
+                    <Text className="text-red-600 font-bold text-xl">
                       {formatPrice(order.totalAmount)}
                     </Text>
                   </View>
 
-                  {/* Action Buttons */}
-                  {order.status === 'pending' && (
-                    <View className="flex-row mt-3">
+                  {/* Action Buttons - Tối ưu cho người bán */}
+                  <View className="flex-row mt-3">
+                    {/* Hành động chính cho trạng thái Chờ xác nhận */}
+                    {isPending && (
+                      <>
+                        <TouchableOpacity
+                          onPress={() => handleCancelOrder(order.id)}
+                          className="flex-1 bg-red-50 rounded-xl py-3 items-center mr-2 border border-red-200"
+                        >
+                          <Text className="text-red-600 font-semibold">
+                            ❌ Hủy đơn
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleConfirmOrder(order.id)}
+                          className="flex-1 bg-green-600 rounded-xl py-3 items-center ml-2"
+                        >
+                          <Text className="text-white font-semibold">
+                            ✅ Xác nhận đơn
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+
+                    {/* Hành động chính cho trạng thái Đã xác nhận/Đang chuẩn bị */}
+                    {isConfirmed && (
                       <TouchableOpacity
-                        onPress={() => handleCancelOrder(order.id)}
-                        className="flex-1 bg-red-50 rounded-xl py-3 items-center mr-2"
+                        onPress={() => handleShipOrder(order.id)}
+                        className="flex-1 bg-cyan-600 rounded-xl py-3 items-center"
                       >
-                        <Text className="text-red-600 font-semibold">
-                          Hủy đơn
+                        <Text className="text-white font-semibold">
+                          🚀 Bắt đầu Giao hàng
                         </Text>
                       </TouchableOpacity>
+                    )}
+
+                    {/* Nếu không có hành động chính, hiển thị chi tiết */}
+                    {!isPending && !isConfirmed && !isDelivered && (
                       <TouchableOpacity
-                        onPress={() => router.push(`/order/${order.id}`)}
-                        className="flex-1 bg-blue-600 rounded-xl py-3 items-center ml-2"
+                        onPress={() => router.push(`/(seller-tabs)/order/[id]`)}
+                        className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
                       >
                         <Text className="text-white font-semibold">
                           Xem chi tiết
                         </Text>
                       </TouchableOpacity>
-                    </View>
-                  )}
+                    )}
 
-                  {order.status === 'delivered' && (
-                    <TouchableOpacity
-                      onPress={() => router.push(`/order/${order.id}`)}
-                      className="mt-3 bg-blue-600 rounded-xl py-3 items-center"
-                    >
-                      <Text className="text-white font-semibold">
-                        Đánh giá
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                    {/* Nút đánh giá (Giữ lại cho trường hợp người bán muốn xem đánh giá) */}
+                    {isDelivered && (
+                      <TouchableOpacity
+                        onPress={() => router.push(`/(seller-tabs)/order/[id]`)} // Giả định có trang đánh giá
+                        className="flex-1 bg-yellow-600 rounded-xl py-3 items-center"
+                      >
+                        <Text className="text-white font-semibold">
+                          ⭐ Xem Đánh giá
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -442,18 +419,18 @@ export default function OrdersScreen() {
               <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
             </View>
             <Text className="text-gray-900 font-bold text-lg mb-2">
-              Chưa có đơn hàng
+              Chưa có đơn hàng nào
             </Text>
             <Text className="text-gray-500 text-sm text-center mb-6">
-              Bạn chưa có đơn hàng nào
+              Các đơn hàng mới sẽ xuất hiện ở đây.
             </Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)')}>
+            <TouchableOpacity onPress={() => router.push('/(seller-tabs)/products')}>
               <LinearGradient
-                colors={['#3B82F6', '#2563EB']}
+                colors={['#10B981', '#059669']}
                 className="px-8 py-4 rounded-2xl"
               >
                 <Text className="text-white font-bold">
-                  Mua sắm ngay
+                  ➕ Quản lý Sản phẩm
                 </Text>
               </LinearGradient>
             </TouchableOpacity>

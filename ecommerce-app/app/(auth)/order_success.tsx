@@ -1,50 +1,120 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from "react-native-safe-area-context";
+
+interface ActualOrderItem {
+  id: number;
+  productName: string;
+  price: number; 
+  quantity: number;
+  image?: string; 
+}
+
+interface ActualOrderData {
+    orderNumber: string;
+    createdAt: string;
+    totalAmount: number;
+    paymentMethod: string;
+    shippingAddress: string;
+    shippingFee: number;
+    items: ActualOrderItem[];
+    // ... thêm các trường khác nếu có từ API
+}
+
+// Hàm ánh xạ phương thức thanh toán (từ code sang text hiển thị)
+const mapPaymentMethod = (code: string) => {
+  switch (code) {
+    case 'cod': return 'Thanh toán khi nhận hàng (COD)';
+    case 'momo': return 'Ví MoMo';
+    case 'credit_card': return 'Thẻ ATM/Visa/Master';
+    case 'bank_transfer': return 'Chuyển khoản ngân hàng';
+    case 'pay_later': return 'Pay later';
+    default: return code;
+  }
+};
 
 export default function OrderSuccessScreen() {
+  const params = useLocalSearchParams();
+  const actualOrder: ActualOrderData | null = useMemo(() => {
+    if (params.orderData && typeof params.orderData === 'string') {
+      try {
+        const data = JSON.parse(params.orderData);
+        // Kiểm tra xem data có phải là đơn hàng hợp lệ không (ví dụ: có orderNumber)
+        if (data && data.orderNumber) {
+             return {
+                orderNumber: data.orderNumber,
+                createdAt: new Date(data.createdAt).toLocaleDateString('vi-VN', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                }),
+                totalAmount: data.totalAmount, // Sử dụng totalAmount từ API
+                shippingFee: data.shippingFee || 0,
+                paymentMethod: mapPaymentMethod(data.paymentMethod),
+                shippingAddress: data.shippingAddress,
+                items: data.items.map((item: any) => ({
+                    id: item.id,
+                    productName: item.productName || item.name,
+                    price: item.price,
+                    quantity: item.quantity,
+                    // Giả định API trả về mảng images, lấy cái đầu tiên
+                    image: item.product?.images?.[0] || item.image || 'https://via.placeholder.com/60',
+                })),
+            } as ActualOrderData;
+        }
+      } catch (e) {
+        console.error("Lỗi parse orderData:", e);
+      }
+    }
+    return null; // Trả về null nếu không có dữ liệu hoặc lỗi
+  }, [params.orderData]);
+
+  // Hiển thị loading hoặc lỗi nếu không có dữ liệu
+  if (!actualOrder) {
+      return (
+          <View className="flex-1 justify-center items-center bg-gray-50">
+              <Text className="text-xl font-bold text-red-600">Lỗi tải đơn hàng</Text>
+              <Text className="text-gray-500 mt-2 text-center px-6">
+                Không thể tải thông tin đơn hàng vừa đặt. Vui lòng kiểm tra mục "Đơn hàng của tôi".
+              </Text>
+              <TouchableOpacity onPress={() => router.replace('/')} className="mt-6 p-4 bg-blue-600 rounded-xl">
+                  <Text className="text-white font-semibold">Trở về Trang chủ</Text>
+              </TouchableOpacity>
+          </View>
+      );
+  }
+
   const orderInfo = {
-    orderNumber: 'DH2024100401234',
-    orderDate: '04/10/2024 14:30',
-    estimatedDelivery: '07/10/2024',
-    total: 43010000,
-    paymentMethod: 'Thanh toán khi nhận hàng (COD)',
-    shippingAddress: '123 Đường ABC, Phường XYZ, Quận 1, TP.HCM',
+    orderNumber: actualOrder.orderNumber,
+    orderDate: actualOrder.createdAt,
+    estimatedDelivery: 'Dự kiến: 3-5 ngày làm việc', // Có thể thêm trường này vào API nếu muốn
+    total: actualOrder.totalAmount,
+    paymentMethod: actualOrder.paymentMethod,
+    shippingAddress: actualOrder.shippingAddress,
   };
 
-  const orderItems = [
-    {
-      id: 1,
-      name: 'iPhone 15 Pro Max 256GB',
-      price: 29990000,
-      quantity: 1,
-      image: 'https://via.placeholder.com/60',
-    },
-    {
-      id: 2,
-      name: 'AirPods Pro 2nd Gen',
-      price: 6490000,
-      quantity: 2,
-      image: 'https://via.placeholder.com/60',
-    },
-  ];
+  const orderItems = actualOrder.items.map(item => ({
+    id: item.id,
+    name: item.productName,
+    price: item.price,
+    quantity: item.quantity,
+    image: item.image,
+  }));
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + 'đ';
-  };
+  return Number(price).toLocaleString('vi-VN') + ' ₫';
+};
 
   const handleContinueShopping = () => {
-    router.push('/(tabs)');
+    router.push('/(customer-tabs)/mall');
   };
 
   const handleViewOrderDetails = () => {

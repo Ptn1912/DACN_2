@@ -1,0 +1,5 @@
+await SPayLater.registerCustomer("0xaCA96853E0d2850300Df425Ce01230BF9A381FC2");
+await SPayLater.getCustomerInfo("0xaCA96853E0d2850300Df425Ce01230BF9A381FC2");
+const SPayLater = await ethers.getContractAt("SPayLater", "0x9c261CcE46BCD0bd29D75A704267838C43C1cc74");
+await deployer.getBalance();
+const [deployer] = await ethers.getSigners();

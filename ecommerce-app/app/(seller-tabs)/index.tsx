@@ -117,6 +117,7 @@ export default function SellerDashboardScreen() {
       label: "Xem đơn hàng",
       icon: "layers-outline",
       color: "#10B981",
+      onPress: () => router.push('/(seller-tabs)/orders'),
     },
     {
       id: 3,
@@ -311,7 +312,7 @@ export default function SellerDashboardScreen() {
             <Text className="text-lg font-bold text-gray-900">
               Đơn hàng gần đây
             </Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(seller-tabs)/orders')}>
               <Text className="text-blue-600 font-medium text-sm">
                 Xem tất cả
               </Text>

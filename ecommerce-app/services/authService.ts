@@ -15,6 +15,15 @@ export interface LoginData {
   userType: 'customer' | 'seller';
 }
 
+export interface User {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string;
+  userType: 'customer' | 'seller';
+}
+
+
 export const authService = {
   async register(data: RegisterData) {
     try {
