@@ -114,16 +114,19 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity className="relative">
-              <Ionicons
-                name="chatbubble-ellipses-outline"
-                size={26}
-                color="#1F2937"
-              />
-              <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
-                <Text className="text-white text-xs font-bold">3</Text>
-              </View>
-            </TouchableOpacity>
+            <TouchableOpacity 
+  className="relative"
+  onPress={() => router.push('../inbox')}
+>
+  <Ionicons
+    name="chatbubble-ellipses-outline"
+    size={26}
+    color="#1F2937"
+  />
+  <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
+    <Text className="text-white text-xs font-bold">3</Text>
+  </View>
+</TouchableOpacity>
           </View>
         </View>
       </View>
