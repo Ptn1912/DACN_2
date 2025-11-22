@@ -189,7 +189,7 @@ export default function ManageProductsScreen() {
         </View>
 
         {/* Search Bar */}
-        <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 shadow-sm">
+        <View className="flex-row items-center bg-white rounded-2xl px-4 py-2 shadow-sm">
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
             value={searchQuery}

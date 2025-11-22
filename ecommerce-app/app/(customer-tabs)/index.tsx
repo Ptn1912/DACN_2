@@ -88,19 +88,16 @@ export default function HomeScreen() {
         <View className="flex-row items-center space-x-4">
           {/* Search Bar */}
           <View className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-4 py-1">
-            <Ionicons name="search" size={20} color="#9CA3AF" />
-            <TextInput
-              placeholder="Tìm kiếm sản phẩm..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="flex-1 ml-3 text-gray-900"
-              placeholderTextColor="#9CA3AF"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+                        onPress={() => router.push("/search")}
+                        className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-2 py-3"
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="search" size={20} color="#9CA3AF" />
+                        <Text className="flex-1 ml-3 text-gray-500">
+                          Tìm kiếm sản phẩm...
+                        </Text>
+                      </TouchableOpacity>
           </View>
 
           {/* Action Buttons */}

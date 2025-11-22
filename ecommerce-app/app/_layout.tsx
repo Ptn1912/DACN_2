@@ -1,3 +1,4 @@
+import '../polyfills';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
@@ -6,7 +7,7 @@ import "../global.css";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthProvider } from '@/hooks/useAuth';
 import { CartProvider } from "@/context/CartContext";
-// Giữ splash screen hiển thị khi load fonts
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {

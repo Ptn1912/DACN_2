@@ -3,6 +3,9 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "blockchain": "hardhat node",
+    "deploy": "hardhat run scripts/deploy.js --network localhost",
+    "compile": "hardhat compile",
     "cron:overdue": "ts-node scripts/check-overdue-cron.ts",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -12,6 +15,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@ethersproject/shims": "^5.8.0",
     "@expo/vector-icons": "^15.0.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -21,6 +25,7 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "@types/lodash": "^4.17.20",
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -39,6 +44,7 @@
     "expo-symbols": "~1.0.7",
     "expo-system-ui": "~6.0.7",
     "expo-web-browser": "~15.0.8",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.546.0",
     "lucide-react-native": "^0.544.0",
     "nativewind": "^4.2.1",
@@ -47,19 +53,23 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.4",
     "react-native-gesture-handler": "~2.28.0",
+    "react-native-get-random-values": "^2.0.0",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "~0.21.0",
+    "react-native-webview": "^13.16.0",
     "react-native-worklets": "0.5.1",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "web3": "^4.16.0"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "hardhat": "^2.27.0",
     "tailwindcss": "^3.4.18",
     "typescript": "~5.9.2"
   },

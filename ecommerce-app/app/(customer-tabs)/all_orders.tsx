@@ -29,9 +29,19 @@ export default function BuyerOrdersScreen() {
         return map[status] || { text: status, color: "#000" };
     };
 
+    const getPaymentStatusInfo = (paymentStatus: string) => {
+        const map: Record<string, { text: string; color: string; bgColor: string; icon: string }> = {
+            PENDING: { text: "Chưa thanh toán", color: "#F59E0B", bgColor: "#FEF3C7", icon: "time-outline" },
+            COMPLETED: { text: "Đã thanh toán", color: "#10B981", bgColor: "#D1FAE5", icon: "checkmark-circle" },
+            FAILED: { text: "Thanh toán thất bại", color: "#EF4444", bgColor: "#FEE2E2", icon: "close-circle" },
+            REFUNDED: { text: "Đã hoàn tiền", color: "#8B5CF6", bgColor: "#EDE9FE", icon: "return-down-back" },
+        };
+        return map[paymentStatus] || { text: "Chưa xác định", color: "#6B7280", bgColor: "#F3F4F6", icon: "help-circle" };
+    };
+
     const formatPrice = (price: number) => {
-  return Number(price).toLocaleString('vi-VN') + ' ₫';
-};
+        return Number(price).toLocaleString('vi-VN') + ' ₫';
+    };
 
     const formatDate = (date: Date | string) =>
         new Date(date).toLocaleDateString("vi-VN", {
@@ -77,27 +87,52 @@ export default function BuyerOrdersScreen() {
                 ) : (
                     orders.map((order) => {
                         const statusInfo = getStatusInfo(order.status);
+                        const paymentInfo = getPaymentStatusInfo(order.paymentStatus);
 
                         return (
                             <TouchableOpacity
                                 key={order.id}
                                 className="bg-white rounded-xl p-4 mx-4 mb-3 shadow-md border border-gray-100"
-                                onPress={() => router.push(`(customer-tabs)/order/${order.id}`)} // dẫn tới trang chi tiết đơn hàng
+                                onPress={() => router.push(`(customer-tabs)/order/${order.id}`)}
                             >
-                                <View className="flex-row justify-between mb-2">
-                                    <Text className="font-bold text-gray-900">#{order.id}</Text>
-                                    <Text style={{ color: statusInfo.color }} className="font-semibold">
-                                        {statusInfo.text}
+                                {/* Header: Order Number & Status */}
+                                <View className="flex-row justify-between items-center mb-3">
+                                    <Text className="font-bold text-gray-900 text-base">#{order.orderNumber}</Text>
+                                    
+                                </View>
+
+                                {/* Payment Status Badge */}
+                                <View 
+                                    style={{ backgroundColor: paymentInfo.bgColor }} 
+                                    className="flex-row items-center px-3 py-2 rounded-lg mb-3"
+                                >
+                                    <Ionicons name={paymentInfo.icon as any} size={18} color={paymentInfo.color} />
+                                    <Text style={{ color: paymentInfo.color }} className="font-semibold text-sm ml-2">
+                                        {paymentInfo.text}
                                     </Text>
                                 </View>
 
-                                <View className="flex-row justify-between mb-2">
-                                    <Text className="text-gray-500 text-sm">Tổng tiền:</Text>
-                                    <Text className="text-red-600 font-bold">{formatPrice(order.totalAmount)}</Text>
+                                {/* Total Amount */}
+                                <View className="flex-row justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                                    <Text className="text-gray-600 text-sm">Tổng tiền:</Text>
+                                    <Text className="text-blue-600 font-bold text-lg">{formatPrice(order.totalAmount)}</Text>
                                 </View>
 
-                                <View className="flex-row justify-between">
-                                    <Text className="text-gray-500 text-sm">Ngày đặt:</Text>
+                                {/* Payment Method */}
+                                <View className="flex-row justify-between items-center mb-2">
+                                    <Text className="text-gray-600 text-sm">Phương thức:</Text>
+                                    <Text className="text-gray-700 text-sm font-medium">
+                                        {order.paymentMethod === 'cod' ? 'COD' : 
+                                         order.paymentMethod === 'momo' ? 'MoMo' : 
+                                         order.paymentMethod === 'credit_card' ? 'Thẻ tín dụng' :
+                                         order.paymentMethod === 'bank_transfer' ? 'Chuyển khoản' :
+                                         order.paymentMethod}
+                                    </Text>
+                                </View>
+
+                                {/* Order Date */}
+                                <View className="flex-row justify-between items-center">
+                                    <Text className="text-gray-600 text-sm">Ngày đặt:</Text>
                                     <Text className="text-gray-700 text-sm">{formatDate(order.createdAt)}</Text>
                                 </View>
                             </TouchableOpacity>

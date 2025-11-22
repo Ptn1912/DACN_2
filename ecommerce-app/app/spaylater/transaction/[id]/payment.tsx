@@ -26,7 +26,7 @@ export default function PaymentScreen() {
   const transaction = transactions.find(t => t.id === parseInt(id as string));
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN') + ' ₫';
+    return Number(price).toLocaleString('vi-VN') + ' ₫';
   };
 
   const remainingAmount = transaction 

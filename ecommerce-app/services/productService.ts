@@ -53,24 +53,101 @@ export interface CategoryListResponse {
   error?: string;
 }
 
+export interface SearchResponse {
+  success: boolean;
+  data?: {
+    results: Product[];
+    categories?: Category[];
+    query: string;
+    total: number;
+  };
+  error?: string;
+}
+
+export interface AutocompleteResponse {
+  success: boolean;
+  data?: {
+    suggestions: Array<{
+      id: number;
+      name: string;
+      price: number;
+      images: string[];
+      category: {
+        name: string;
+      };
+    }>;
+    query: string;
+  };
+  error?: string;
+}
+
+export interface SellerProductsResponse {
+  success: boolean;
+  data?: {
+    seller: {
+      id: number;
+      fullName: string;
+      email: string;
+      joinedDate: Date;
+    };
+    products: Product[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+    stats: {
+      totalProducts: number;
+      totalSold: number;
+      averageRating: number;
+      categoryDistribution: Array<{
+        categoryId: number;
+        _count: number;
+      }>;
+    };
+  };
+  error?: string;
+}
+
 export const productService = {
   /**
-   * Lấy danh sách products
+   * Lấy danh sách products với filters nâng cao
    */
   async getProducts(params?: {
-    categoryId?: number;
-    search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<ProductListResponse> {
+  categoryId?: number;
+  sellerId?: number;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: 'newest' | 'price_asc' | 'price_desc' | 'popular' | 'rating';
+  inStock?: boolean;
+  page?: number;
+  limit?: number;
+}, p0?: number): Promise<ProductListResponse> {
     try {
       const queryParams = new URLSearchParams();
       
       if (params?.categoryId) {
         queryParams.append('categoryId', params.categoryId.toString());
       }
+      if (params?.sellerId) {
+        queryParams.append('sellerId', params.sellerId.toString());
+      }
       if (params?.search) {
         queryParams.append('search', params.search);
+      }
+      if (params?.minPrice) {
+        queryParams.append('minPrice', params.minPrice.toString());
+      }
+      if (params?.maxPrice) {
+        queryParams.append('maxPrice', params.maxPrice.toString());
+      }
+      if (params?.sortBy) {
+        queryParams.append('sortBy', params.sortBy);
+      }
+      if (params?.inStock !== undefined) {
+        queryParams.append('inStock', params.inStock.toString());
       }
       if (params?.page) {
         queryParams.append('page', params.page.toString());
@@ -93,6 +170,57 @@ export const productService = {
       };
     }
   },
+
+  /**
+   * Tìm kiếm sản phẩm (full search)
+   */
+  async searchProducts(query: string, limit: number = 20): Promise<SearchResponse> {
+    try {
+      const response = await api.get(`/products/search?q=${encodeURIComponent(query)}&type=full&limit=${limit}`);
+      
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      console.error('Search products error:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Không thể tìm kiếm sản phẩm',
+      };
+    }
+  },
+
+  /**
+   * Autocomplete search (gợi ý khi gõ)
+   */
+  async autocomplete(query: string, limit: number = 5): Promise<AutocompleteResponse> {
+    try {
+      if (query.length < 2) {
+        return {
+          success: true,
+          data: {
+            suggestions: [],
+            query,
+          },
+        };
+      }
+
+      const response = await api.get(`/products/search?q=${encodeURIComponent(query)}&type=autocomplete&limit=${limit}`);
+      
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      console.error('Autocomplete error:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Không thể tải gợi ý',
+      };
+    }
+  },
+  
 
   /**
    * Lấy chi tiết product

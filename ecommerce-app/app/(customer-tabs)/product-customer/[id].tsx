@@ -399,7 +399,10 @@ export default function ProductDetailCusScreen() {
                 </View>
               </View>
               <TouchableOpacity
-                onPress={() => Alert.alert('Thông báo', 'Tính năng đang phát triển')}
+                onPress={() => router.push({
+                pathname: '/(customer-tabs)/seller-shop/[id]',
+                params: { sellerId: product.seller.id.toString() }
+              })}
                 className="bg-white rounded-2xl px-4 py-2 border border-gray-200"
               >
                 <Text className="text-blue-600 font-semibold text-sm">

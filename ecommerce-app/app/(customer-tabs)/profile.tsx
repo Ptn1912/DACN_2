@@ -108,7 +108,7 @@ export default function ProfileScreen() {
       onPress: (router: any) => router.push("/spaylater"),
     },
     { id: 2, icon: "gift-outline", title: "Voucher", count: "12" },
-    { id: 3, icon: "star-outline", title: "Điểm", count: "850" },
+    { id: 3, icon: "logo-bitcoin", title: "Điểm", count: "100", onPress: (router: any) => router.push("/(customer-tabs)/coin_transfer"), },
   ];
   // Get user initials for avatar
   const getUserInitials = () => {

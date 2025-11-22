@@ -252,18 +252,18 @@ export const orderService = {
     }
   },
 
-  async getOrderPaymentStatus(orderNumber: string): Promise<{
+  async getOrderPaymentStatus(orderId: string): Promise<{
   success: boolean;
   paymentStatus?: PaymentStatus;
   error?: string;
 }> {
   try {
-    const response = await api.get(`/orders?orderNumber=${orderNumber}&limit=1`);
+    const response = await api.get(`/orders/${orderId}`);
     
     if (response.data.orders && response.data.orders.length > 0) {
       return {
         success: true,
-        paymentStatus: response.data.orders[0].paymentStatus,
+        paymentStatus: response.data.paymentStatus,
       };
     }
     
@@ -279,7 +279,31 @@ export const orderService = {
     };
   }
 },
-
+ /**
+ * Cập nhật trạng thái thanh toán bằng orderNumber
+ * @param orderNumber - Mã đơn hàng (VD: ORD1763740368287596)
+ * @param paymentStatus - Trạng thái thanh toán mới
+ */
+  async updateOrderPaymentStatus(
+    orderNumber: string,
+    paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`📝 Updating payment status for order ${orderNumber} to ${paymentStatus}`);
+      
+      const response = await api.patch(`/orders/${orderNumber}`, {
+        paymentStatus,
+      });
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Không thể cập nhật trạng thái thanh toán',
+      };
+    }
+  },
   /**
    * Phương thức xác nhận đơn hàng (Pending -> Confirmed)
    * @param orderId ID của đơn hàng cần xác nhận
