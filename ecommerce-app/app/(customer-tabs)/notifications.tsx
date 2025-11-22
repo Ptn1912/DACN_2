@@ -1,4 +1,3 @@
-// app/(tabs)/notifications.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -13,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { notificationService } from '@/services/notificationService';
+import { useAuth } from '@/hooks/useAuth';
 
 // Types
 type NotificationType = 'order' | 'promotion' | 'system' | 'review' | 'message';
@@ -35,106 +35,21 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | NotificationType>('all');
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchNotifications();
   }, []);
 
   const fetchNotifications = async () => {
+    if (!user) return; // nếu user null, thoát luôn
+
     try {
       setLoading(true);
-      // Simulate API call - Replace with real API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'order',
-          title: 'Đơn hàng mới',
-          message: 'Bạn có 1 đơn hàng mới #12345 cần xác nhận',
-          time: '5 phút trước',
-          isRead: false,
-          icon: 'cart',
-          color: '#3B82F6',
-          actionUrl: '/orders/12345',
-        },
-        {
-          id: '2',
-          type: 'promotion',
-          title: 'Flash Sale đang diễn ra',
-          message: 'Giảm giá đến 50% cho hơn 1000 sản phẩm. Nhanh tay kẻo lỡ!',
-          time: '1 giờ trước',
-          isRead: false,
-          icon: 'pricetag',
-          color: '#F59E0B',
-        },
-        {
-          id: '3',
-          type: 'order',
-          title: 'Đơn hàng đã giao',
-          message: 'Đơn hàng #12344 đã được giao thành công',
-          time: '2 giờ trước',
-          isRead: true,
-          icon: 'checkmark-circle',
-          color: '#10B981',
-          actionUrl: '/orders/12344',
-        },
-        {
-          id: '4',
-          type: 'review',
-          title: 'Đánh giá mới',
-          message: 'Khách hàng đã đánh giá 5⭐ cho sản phẩm iPhone 15 Pro',
-          time: '3 giờ trước',
-          isRead: true,
-          icon: 'star',
-          color: '#F59E0B',
-        },
-        {
-          id: '5',
-          type: 'system',
-          title: 'Cập nhật hệ thống',
-          message: 'Phiên bản 2.0 đã có mặt với nhiều tính năng mới',
-          time: '1 ngày trước',
-          isRead: true,
-          icon: 'information-circle',
-          color: '#8B5CF6',
-        },
-        {
-          id: '6',
-          type: 'message',
-          title: 'Tin nhắn mới',
-          message: 'Bạn có 3 tin nhắn chưa đọc từ khách hàng',
-          time: '1 ngày trước',
-          isRead: true,
-          icon: 'chatbubble',
-          color: '#EC4899',
-        },
-        {
-          id: '7',
-          type: 'order',
-          title: 'Đơn hàng đã hủy',
-          message: 'Đơn hàng #12343 đã được hủy bởi khách hàng',
-          time: '2 ngày trước',
-          isRead: true,
-          icon: 'close-circle',
-          color: '#EF4444',
-          actionUrl: '/orders/12343',
-        },
-        {
-          id: '8',
-          type: 'promotion',
-          title: 'Mã giảm giá mới',
-          message: 'Bạn nhận được mã giảm 100K cho đơn hàng tiếp theo',
-          time: '3 ngày trước',
-          isRead: true,
-          icon: 'gift',
-          color: '#F59E0B',
-        },
-      ];
-
-      setNotifications(mockNotifications);
-    } catch (error) {
-      console.error('Fetch notifications error:', error);
+      const response = await notificationService.getNotifications(user.id);
+      setNotifications(response.data);
+    } catch (err) {
+      console.log(err);
     } finally {
       setLoading(false);
     }
@@ -146,12 +61,17 @@ export default function NotificationsScreen() {
     setRefreshing(false);
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === id ? { ...notif, isRead: true } : notif
-      )
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === id ? { ...notif, isRead: true } : notif
+        )
+      );
+      await notificationService.markAsRead(id);
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
   };
 
   const markAllAsRead = () => {
@@ -162,10 +82,16 @@ export default function NotificationsScreen() {
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Đồng ý',
-          onPress: () => {
-            setNotifications(prev =>
-              prev.map(notif => ({ ...notif, isRead: true }))
-            );
+          onPress: async () => {
+            if (!user) return;
+
+            try {
+              setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })));
+
+              await notificationService.markAllAsRead(user.id);
+            } catch (err) {
+              console.error("Failed to mark all as read:", err);
+            }
           },
         },
       ]
@@ -181,29 +107,38 @@ export default function NotificationsScreen() {
         {
           text: 'Xóa',
           style: 'destructive',
-          onPress: () => {
-            setNotifications(prev => prev.filter(n => n.id !== id));
+          onPress: async () => {
+            try {
+              setNotifications(prev => prev.filter(n => n.id !== id));
+              await notificationService.deleteNotification(id);
+            } catch (err) {
+              console.error("Failed to delete notification:", err);
+            }
           },
         },
       ]
     );
   };
 
-  const handleNotificationPress = (notification: Notification) => {
-    markAsRead(notification.id);
-    
+  const handleNotificationPress = async (notification: Notification) => {
+    // 1. Đánh dấu là đã đọc
+    await markAsRead(notification.id);
+
     if (notification.actionUrl) {
-      // Navigate to action URL
-      // router.push(notification.actionUrl);
-      Alert.alert('Thông báo', `Chuyển đến: ${notification.actionUrl}`);
+      Alert.alert('Đã đọc', `Thông báo về "${notification.title}" đã được đánh dấu là đã đọc.`);
     }
   };
 
-  const filteredNotifications = notifications.filter(n => 
+  const filteredNotifications = notifications.filter(n =>
     filter === 'all' || n.type === filter
   );
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  function getNotificationColors(color?: string): [string, string] {
+    const base = color || '#3B82F6';
+    return [base, base + 'CC'];
+  }
 
   const filterButtons = [
     { key: 'all', label: 'Tất cả', icon: 'grid-outline' },
@@ -224,7 +159,7 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" />
-      
+
       {/* Header with Gradient */}
       <LinearGradient
         colors={['#3B82F6', '#2563EB']}
@@ -241,7 +176,7 @@ export default function NotificationsScreen() {
               {unreadCount > 0 ? `${unreadCount} thông báo chưa đọc` : 'Không có thông báo mới'}
             </Text>
           </View>
-          
+
           {unreadCount > 0 && (
             <TouchableOpacity
               onPress={markAllAsRead}
@@ -255,8 +190,8 @@ export default function NotificationsScreen() {
         </View>
 
         {/* Filter Tabs */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           className="flex-row -mx-4 px-4"
         >
@@ -264,11 +199,10 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               key={btn.key}
               onPress={() => setFilter(btn.key as any)}
-              className={`mr-3 px-4 py-2.5 rounded-xl flex-row items-center ${
-                filter === btn.key
-                  ? 'bg-white'
-                  : 'bg-white/20'
-              }`}
+              className={`mr-3 px-4 py-2.5 rounded-xl flex-row items-center ${filter === btn.key
+                ? 'bg-white'
+                : 'bg-white/20'
+                }`}
             >
               <Ionicons
                 name={btn.icon as any}
@@ -276,11 +210,10 @@ export default function NotificationsScreen() {
                 color={filter === btn.key ? '#3B82F6' : '#FFF'}
               />
               <Text
-                className={`ml-2 font-semibold ${
-                  filter === btn.key
-                    ? 'text-blue-600'
-                    : 'text-white'
-                }`}
+                className={`ml-2 font-semibold ${filter === btn.key
+                  ? 'text-blue-600'
+                  : 'text-white'
+                  }`}
               >
                 {btn.label}
               </Text>
@@ -302,9 +235,8 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               key={notification.id}
               onPress={() => handleNotificationPress(notification)}
-              className={`mb-3 rounded-2xl overflow-hidden ${
-                notification.isRead ? 'bg-white' : 'bg-blue-50 border-2 border-blue-200'
-              }`}
+              className={`mb-3 rounded-2xl overflow-hidden ${notification.isRead ? 'bg-white' : 'bg-blue-50 border-2 border-blue-200'
+                }`}
               activeOpacity={0.7}
             >
               <View className="p-4">
@@ -312,17 +244,19 @@ export default function NotificationsScreen() {
                   {/* Icon */}
                   <View className="mr-3">
                     <LinearGradient
-                      colors={[notification.color, notification.color + 'CC']}
+                      colors={getNotificationColors(notification.color)}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       className="w-12 h-12 rounded-xl items-center justify-center"
                     >
                       <Ionicons
-                        name={notification.icon as any}
+                        name={notification.icon as keyof typeof Ionicons.glyphMap || 'notifications-outline'}
                         size={24}
                         color="#FFF"
                       />
+
                     </LinearGradient>
+
                   </View>
 
                   {/* Content */}
@@ -335,11 +269,11 @@ export default function NotificationsScreen() {
                         <View className="w-2.5 h-2.5 bg-blue-600 rounded-full ml-2 mt-1" />
                       )}
                     </View>
-                    
+
                     <Text className="text-gray-600 text-sm mb-2" numberOfLines={2}>
                       {notification.message}
                     </Text>
-                    
+
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center">
                         <Ionicons name="time-outline" size={14} color="#9CA3AF" />
@@ -347,7 +281,7 @@ export default function NotificationsScreen() {
                           {notification.time}
                         </Text>
                       </View>
-                      
+
                       <TouchableOpacity
                         onPress={() => deleteNotification(notification.id)}
                         className="p-1"
@@ -370,8 +304,8 @@ export default function NotificationsScreen() {
               Không có thông báo
             </Text>
             <Text className="text-gray-500 text-sm text-center px-8">
-              {filter === 'all' 
-                ? 'Bạn chưa có thông báo nào' 
+              {filter === 'all'
+                ? 'Bạn chưa có thông báo nào'
                 : `Không có thông báo ${filterButtons.find(b => b.key === filter)?.label.toLowerCase()}`
               }
             </Text>

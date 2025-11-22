@@ -19,11 +19,12 @@ model User {
   isVerified    Boolean   @default(false) @map("is_verified")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
-  
+
   sessions      Session[]
   products      Product[] @relation("UserProducts")
   orders        Order[]   @relation("CustomerOrders")
   sellerItems   OrderItem[] @relation("SellerOrderItems")
+  notifications Notification[]
 
   @@index([email])
   @@index([userType])
@@ -167,4 +168,18 @@ enum PaymentStatus {
   unpaid        // Chưa thanh toán
   paid          // Đã thanh toán
   refunded      // Đã hoàn tiền
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  type        String   // order | system | promotion | review | message
+  title       String
+  message     String
+  actionUrl   String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  @@map("notifications")
 }

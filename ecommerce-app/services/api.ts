@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Thay đổi IP này thành IP của server Next.js của bạn
-export const API_URL = 'http://192.168.1.109:3000/api';
+export const API_URL = 'http://192.168.1.10:3000/api';
 
 const api = axios.create({
   baseURL: API_URL,

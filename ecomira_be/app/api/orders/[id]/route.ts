@@ -1,8 +1,9 @@
-// app/api/orders/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+// Đã loại bỏ: import { Expo } from 'expo-server-sdk'; 
 
 const prisma = new PrismaClient();
+// Đã loại bỏ: const expo = new Expo();
 
 type OrderStatus =
   | 'pending'
@@ -77,10 +78,50 @@ export async function PUT(
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
     }
 
+    // Cần include customer để lấy customerId cho việc tạo Notification
+    const oldOrder = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!oldOrder) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+
+    // 1. Cập nhật trạng thái đơn hàng
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: { status, ...(paymentStatus && { paymentStatus }) },
+      data: { ...(status && { status }), ...(paymentStatus && { paymentStatus }) },
+      include: { customer: true },
     });
+
+    // Nếu trạng thái thay đổi, tạo thông báo DB cho người mua
+    if (status && status !== oldOrder.status) {
+      const title = 'Cập nhật đơn hàng';
+      const message = `Đơn hàng #${updatedOrder.orderNumber} đã được cập nhật: ${status}`;
+      const actionUrl = `/orders/${updatedOrder.id}`;
+
+      // Tạo thông báo DB
+      await prisma.notification.create({
+        data: {
+          userId: updatedOrder.customerId,
+          type: 'order',
+          title: title,
+          message: message,
+          actionUrl: actionUrl,
+        },
+      });
+
+      // Đã loại bỏ hoàn toàn khối code gửi Push Notification cho người mua.
+    }
+
+    // Nếu paymentStatus thay đổi, tạo thông báo DB cho người mua
+    if (paymentStatus && paymentStatus !== oldOrder.paymentStatus) {
+      // Tạo thông báo DB
+      await prisma.notification.create({
+        data: {
+          userId: updatedOrder.customerId,
+          type: 'order',
+          title: 'Cập nhật thanh toán',
+          message: `Thanh toán đơn hàng #${updatedOrder.orderNumber} đã được cập nhật: ${paymentStatus}`,
+          actionUrl: `/orders/${updatedOrder.id}`,
+        },
+      });
+    }
 
     return NextResponse.json(updatedOrder, { status: 200 });
   } catch (error: any) {
@@ -100,19 +141,32 @@ export async function DELETE(
   context: { params: { id: string } | Promise<{ id: string }> }
 ) {
   const resolvedParams = await context.params;
-  const orderId = parseInt(resolvedParams.id);
+  const orderId = parseInt(await resolvedParams.id);
 
   if (isNaN(orderId)) {
     return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
   }
 
   try {
+    const oldOrder = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!oldOrder) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+
     const cancelledOrder = await prisma.order.update({
       where: { id: orderId },
       data: { status: 'cancelled' },
+      include: { customer: true },
     });
 
-    // TODO: Hoàn trả tồn kho nếu cần
+    // Thông báo DB cho người mua (giữ nguyên)
+    await prisma.notification.create({
+      data: {
+        userId: cancelledOrder.customerId,
+        type: 'order',
+        title: 'Đơn hàng bị hủy',
+        message: `Đơn hàng #${cancelledOrder.orderNumber} đã bị hủy.`,
+        actionUrl: `/orders/${cancelledOrder.id}`,
+      },
+    });
 
     return NextResponse.json(cancelledOrder, { status: 200 });
   } catch (error: any) {
@@ -123,4 +177,3 @@ export async function DELETE(
     );
   }
 }
-
