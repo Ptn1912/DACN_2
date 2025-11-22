@@ -124,3 +124,70 @@ export async function DELETE(
   }
 }
 
+// Thêm PATCH method vào file app/api/orders/[id]/route.ts
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: { id: string } | Promise<{ id: string }> }
+) {
+  try {
+    const resolvedParams = await context.params;
+    const orderIdentifier = resolvedParams.id; // Có thể là ID hoặc orderNumber
+    const body = await request.json();
+    const { paymentStatus } = body;
+
+    console.log(`Updating payment status for order ${orderIdentifier} to ${paymentStatus}`);
+
+    if (!paymentStatus) {
+      return NextResponse.json(
+        { error: 'Payment status is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate payment status
+    const validStatuses = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'];
+    if (!validStatuses.includes(paymentStatus)) {
+      return NextResponse.json(
+        { error: 'Invalid payment status' },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Tìm đơn hàng bằng orderNumber thay vì id
+    const whereClause = isNaN(Number(orderIdentifier))
+      ? { orderNumber: orderIdentifier } // Nếu là string (orderNumber)
+      : { id: parseInt(orderIdentifier) }; // Nếu là number (id)
+
+    // Update order payment status
+    const order = await prisma.order.update({
+      where: whereClause,
+      data: {
+        paymentStatus,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log(`✅ Order ${orderIdentifier} payment status updated to ${paymentStatus}`);
+
+    return NextResponse.json({
+      success: true,
+      paymentStatus: order.paymentStatus,
+      message: 'Payment status updated successfully',
+    });
+  } catch (error: any) {
+    console.error('Update payment status error:', error);
+    
+    if (error.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to update payment status' },
+      { status: 500 }
+    );
+  }
+}

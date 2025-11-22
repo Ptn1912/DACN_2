@@ -25,7 +25,7 @@ export const momoService = {
       return {
         success: true,
         payUrl: response.data.payUrl,
-        deeplink: response.data.deeplink,
+        // deeplink: response.data.deeplink,
         requestId: response.data.requestId,
       };
     } catch (error: any) {

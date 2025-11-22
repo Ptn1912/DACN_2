@@ -102,6 +102,24 @@ export default function TabLayout() {
             href: null,
           }}
         />
+        <Tabs.Screen
+          name="search"
+          options={{ 
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="seller-shop/[id]"
+          options={{ 
+            href: null,
+          }}
+        />
+        <Tabs.Screen
+          name="coin_transfer"
+          options={{ 
+            href: null,
+          }}
+        />
     </Tabs>
 
     

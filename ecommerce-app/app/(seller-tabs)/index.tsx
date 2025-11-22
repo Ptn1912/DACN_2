@@ -5,8 +5,8 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Image,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,19 +21,33 @@ export default function SellerDashboardScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    inStockProducts: 0,
+    outOfStockProducts: 0,
+    totalSold: 0,
+    averageRating: 0,
+  });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user?.id) {
+      fetchData();
+    }
+  }, [user?.id]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
 
-      // Fetch categories and products in parallel
+      if (!user?.id) return;
+
+      // Fetch categories và products của seller
       const [categoriesResult, productsResult] = await Promise.all([
         productService.getCategories(),
-        productService.getProducts({ limit: 10 }),
+        productService.getProducts({ 
+          sellerId: user.id,
+          limit: 100 // Lấy tất cả để tính stats
+        }),
       ]);
 
       if (categoriesResult.success && categoriesResult.data) {
@@ -41,7 +55,25 @@ export default function SellerDashboardScreen() {
       }
 
       if (productsResult.success && productsResult.data) {
-        setProducts(productsResult.data.products);
+        const allProducts = productsResult.data.products;
+        setProducts(allProducts);
+
+        // Tính toán stats từ dữ liệu thực
+        const totalProducts = allProducts.length;
+        const inStockProducts = allProducts.filter(p => p.stock > 0).length;
+        const outOfStockProducts = allProducts.filter(p => p.stock === 0).length;
+        const totalSold = allProducts.reduce((sum, p) => sum + p.soldCount, 0);
+        const averageRating = totalProducts > 0
+          ? allProducts.reduce((sum, p) => sum + p.rating, 0) / totalProducts
+          : 0;
+
+        setStats({
+          totalProducts,
+          inStockProducts,
+          outOfStockProducts,
+          totalSold,
+          averageRating,
+        });
       }
     } catch (error) {
       console.error("Fetch data error:", error);
@@ -65,39 +97,39 @@ export default function SellerDashboardScreen() {
     );
   }
 
-  const stats = [
+  const dashboardStats = [
     {
       id: 1,
-      label: "Đơn hàng hôm nay",
-      value: "12",
-      change: "+3 từ hôm qua",
-      icon: "receipt-outline",
+      label: "Tổng sản phẩm",
+      value: stats.totalProducts.toString(),
+      change: `${stats.outOfStockProducts} hết hàng`,
+      icon: "cube-outline",
       color: "#3B82F6",
       bgColor: "#DBEAFE",
     },
     {
       id: 2,
-      label: "Doanh số hôm nay",
-      value: "8.5M",
-      change: "+12% từ hôm qua",
-      icon: "wallet-outline",
+      label: "Đã bán",
+      value: stats.totalSold.toString(),
+      change: `${stats.inStockProducts} còn hàng`,
+      icon: "checkmark-circle-outline",
       color: "#10B981",
       bgColor: "#D1FAE5",
     },
     {
       id: 3,
-      label: "Sản phẩm",
-      value: "156",
-      change: "24 hết hàng",
-      icon: "cube-outline",
+      label: "Còn trong kho",
+      value: stats.inStockProducts.toString(),
+      change: `${stats.totalProducts} tổng`,
+      icon: "folder-outline",
       color: "#F59E0B",
       bgColor: "#FEF3C7",
     },
     {
       id: 4,
-      label: "Rating",
-      value: "4.8",
-      change: "98% khách hài lòng",
+      label: "Đánh giá TB",
+      value: stats.averageRating.toFixed(1),
+      change: "Trên 5 sao",
       icon: "star-outline",
       color: "#EC4899",
       bgColor: "#FCE7F3",
@@ -128,71 +160,33 @@ export default function SellerDashboardScreen() {
     },
     {
       id: 4,
-      label: "Chat với khách",
-      icon: "chatbubble-outline",
+      label: "Thống kê",
+      icon: "analytics-outline",
       color: "#EC4899",
-    },
-  ];
-
-  const recentOrders = [
-    {
-      id: 1,
-      orderNumber: "DH2024100401",
-      customer: "Nguyễn Văn A",
-      amount: 29990000,
-      status: "Chờ giao",
-      time: "2 giờ trước",
-      items: 1,
-    },
-    {
-      id: 2,
-      orderNumber: "DH2024100402",
-      customer: "Trần Thị B",
-      amount: 6490000,
-      status: "Đang giao",
-      time: "1 giờ trước",
-      items: 2,
-    },
-    {
-      id: 3,
-      orderNumber: "DH2024100403",
-      customer: "Lê Văn C",
-      amount: 15990000,
-      status: "Hoàn thành",
-      time: "30 phút trước",
-      items: 1,
+      onPress: () => {}, // Có thể thêm trang thống kê sau
     },
   ];
 
   const formatPrice = (price: number) => {
     return price.toLocaleString("vi-VN") + "đ";
   };
-  if (authLoading || loading) {
-    return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text className="text-gray-600 mt-4">Đang tải...</Text>
-      </SafeAreaView>
-    );
-  }
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Chờ giao":
-        return { bg: "#FEF3C7", text: "#92400E" };
-      case "Đang giao":
-        return { bg: "#DBEAFE", text: "#1E40AF" };
-      case "Hoàn thành":
-        return { bg: "#D1FAE5", text: "#065F46" };
-      default:
-        return { bg: "#F3F4F6", text: "#374151" };
-    }
-  };
 
   const getDisplayName = () => {
     if (!user?.fullName) return "Người bán";
     const names = user.fullName.split(" ");
-    return names; // Lấy tên (last word)
+    return names[names.length - 1];
   };
+
+  // Lấy top 5 sản phẩm bán chạy nhất
+  const topProducts = [...products]
+    .sort((a, b) => b.soldCount - a.soldCount)
+    .slice(0, 5);
+
+  // Lấy sản phẩm sắp hết hàng (stock < 10)
+  const lowStockProducts = products
+    .filter(p => p.stock > 0 && p.stock < 10)
+    .sort((a, b) => a.stock - b.stock)
+    .slice(0, 3);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -204,26 +198,33 @@ export default function SellerDashboardScreen() {
           <View>
             <Text className="text-gray-500 text-sm">Xin chào 👋</Text>
             <Text className="text-xl font-bold text-gray-900">
-              {getDisplayName() || "Người bán"}
+              {getDisplayName()}
             </Text>
           </View>
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={26} color="#1F2937" />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons name="chatbubble-outline" size={26} color="#1F2937" />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity>
+              <Ionicons name="notifications-outline" size={26} color="#1F2937" />
+            </TouchableOpacity>
+            <TouchableOpacity>
+              <Ionicons name="chatbubble-outline" size={26} color="#1F2937" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Stats Cards */}
         <View className="px-4 pt-4">
           <Text className="text-lg font-bold text-gray-900 mb-3">
-            Thống kê ngày hôm nay
+            Thống kê tổng quan
           </Text>
           <View className="flex-row flex-wrap justify-between">
-            {stats.map((stat) => (
+            {dashboardStats.map((stat) => (
               <TouchableOpacity
                 key={stat.id}
                 className="bg-white rounded-2xl p-4 mb-3 border border-gray-100"
@@ -243,7 +244,7 @@ export default function SellerDashboardScreen() {
                 <Text className="text-gray-900 font-bold text-lg mb-2">
                   {stat.value}
                 </Text>
-                <Text className="text-green-600 text-xs font-medium">
+                <Text className="text-gray-600 text-xs font-medium">
                   {stat.change}
                 </Text>
               </TouchableOpacity>
@@ -260,6 +261,7 @@ export default function SellerDashboardScreen() {
             {quickActions.map((action) => (
               <TouchableOpacity
                 key={action.id}
+                onPress={action.onPress}
                 className="bg-white rounded-2xl p-4 mb-3 items-center border border-gray-100"
                 style={{ width: "48%" }}
               >
@@ -282,79 +284,150 @@ export default function SellerDashboardScreen() {
         </View>
 
         {/* Performance Banner */}
-        <View className="px-4 mt-6 mb-2">
-          <LinearGradient
-            colors={["#3B82F6", "#06B6D4"]} // from-blue-500 to-cyan-500
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="rounded-2xl p-5"
-          >
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="trending-up" size={20} color="#fff" />
-              <Text className="text-white font-bold ml-2">
-                Hiệu suất cửa hàng
+        {stats.averageRating >= 4.0 && (
+          <View className="px-4 mt-6 mb-2">
+            <LinearGradient
+              colors={["#3B82F6", "#06B6D4"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              className="rounded-2xl p-5"
+            >
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="trophy" size={20} color="#fff" />
+                <Text className="text-white font-bold ml-2">
+                  Hiệu suất tốt
+                </Text>
+              </View>
+              <Text className="text-white/90 text-sm mb-3">
+                Đánh giá trung bình {stats.averageRating.toFixed(1)}/5.0 - Tiếp tục phát huy!
               </Text>
-            </View>
-            <Text className="text-white/90 text-sm mb-3">
-              Cửa hàng của bạn đang trong top 10% bán hàng
-            </Text>
-            <TouchableOpacity className="flex-row items-center">
-              <Text className="text-white font-semibold text-sm">
-                Xem chi tiết →
-              </Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
+              <TouchableOpacity className="flex-row items-center">
+                <Text className="text-white font-semibold text-sm">
+                  Xem chi tiết →
+                </Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
 
-        {/* Recent Orders */}
-        <View className="px-4 mt-6 pb-6">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-bold text-gray-900">
-              Đơn hàng gần đây
+        {/* Low Stock Alert */}
+        {lowStockProducts.length > 0 && (
+          <View className="px-4 mt-6">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center">
+                <Ionicons name="warning" size={20} color="#F59E0B" />
+                <Text className="text-lg font-bold text-gray-900 ml-2">
+                  Sắp hết hàng
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/(seller-tabs)/products')}>
+                <Text className="text-blue-600 font-medium text-sm">
+                  Xem tất cả
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {lowStockProducts.map((product) => (
+              <TouchableOpacity
+                key={product.id}
+                className="bg-white rounded-2xl p-4 mb-3 border border-gray-100"
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className="text-gray-900 font-semibold text-sm mb-1">
+                      {product.name}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                      {product.category.name}
+                    </Text>
+                  </View>
+                  <View className="items-end">
+                    <View className="bg-orange-100 px-3 py-1 rounded-lg">
+                      <Text className="text-orange-800 text-xs font-semibold">
+                        Còn {product.stock}
+                      </Text>
+                    </View>
+                    <Text className="text-gray-600 text-xs mt-1">
+                      {formatPrice(product.price)}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Top Products */}
+        {topProducts.length > 0 && (
+          <View className="px-4 mt-6 pb-6">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-lg font-bold text-gray-900">
+                Sản phẩm bán chạy
+              </Text>
+              <TouchableOpacity onPress={() => router.push('/(seller-tabs)/products')}>
+                <Text className="text-blue-600 font-medium text-sm">
+                  Xem tất cả
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {topProducts.map((product, index) => (
+              <TouchableOpacity
+                key={product.id}
+                className="bg-white rounded-2xl p-4 mb-3 border border-gray-100"
+              >
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 rounded-full bg-blue-100 items-center justify-center mr-3">
+                    <Text className="text-blue-600 font-bold text-sm">
+                      {index + 1}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-gray-900 font-semibold text-sm mb-1">
+                      {product.name}
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Ionicons name="star" size={12} color="#F59E0B" />
+                      <Text className="text-gray-500 text-xs ml-1">
+                        {/* {product.rating ? product.rating.toFixed(1) : '0.0'} •  */}
+                        Đã bán {product.soldCount || 0}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="items-end">
+                    <Text className="text-blue-600 font-bold text-sm">
+                      {formatPrice(product.price)}
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                      Kho: {product.stock}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Empty State */}
+        {products.length === 0 && !loading && (
+          <View className="px-4 py-12 items-center">
+            <Ionicons name="cube-outline" size={64} color="#D1D5DB" />
+            <Text className="text-gray-500 text-base mt-4 text-center">
+              Chưa có sản phẩm nào
             </Text>
-            <TouchableOpacity onPress={() => router.push('/(seller-tabs)/orders')}>
-              <Text className="text-blue-600 font-medium text-sm">
-                Xem tất cả
+            <Text className="text-gray-400 text-sm mt-2 text-center">
+              Thêm sản phẩm đầu tiên để bắt đầu bán hàng
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/(seller-tabs)/add-product')}
+              className="bg-blue-600 px-6 py-3 rounded-xl mt-6"
+            >
+              <Text className="text-white font-semibold">
+                Thêm sản phẩm
               </Text>
             </TouchableOpacity>
           </View>
-
-          {recentOrders.map((order) => (
-            <TouchableOpacity
-              key={order.id}
-              className="bg-white rounded-2xl p-4 mb-3 border border-gray-100"
-            >
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-1">
-                  <Text className="text-gray-900 font-semibold text-sm mb-1">
-                    {order.orderNumber}
-                  </Text>
-                  <Text className="text-gray-500 text-xs">
-                    {order.customer} • {order.items} sản phẩm
-                  </Text>
-                </View>
-                <View
-                  className="px-3 py-1 rounded-lg"
-                  style={{ backgroundColor: getStatusColor(order.status).bg }}
-                >
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{ color: getStatusColor(order.status).text }}
-                  >
-                    {order.status}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
-                <Text className="text-gray-600 text-xs">{order.time}</Text>
-                <Text className="text-blue-600 font-bold text-sm">
-                  {formatPrice(order.amount)}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

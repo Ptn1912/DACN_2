@@ -240,49 +240,41 @@ export default function CheckoutScreen() {
 
       console.log("Order created:", result.data);
       if (selectedPayment === 2) {
-      try {
-      const momoResponse = await momoService.createPayment({
-          orderId: result.data.orderNumber,
-          amount: total,
-          orderInfo: `Thanh toán đơn hàng ${result.data.orderNumber}`,
-      });
+  try {
+    console.log('Starting MoMo payment for order:', result.data.orderNumber);
+    
+    const momoResponse = await momoService.createPayment({
+      orderId: result.data.orderNumber,
+      amount: total,
+      orderInfo: `Thanh toán đơn hàng ${result.data.orderNumber}`,
+    });
 
-        if (momoResponse.success && momoResponse.payUrl) {
-          // Mở MoMo app hoặc web
-          const momoDeeplink = momoResponse.deeplink || momoResponse.payUrl;
+    console.log('MoMo service response:', momoResponse);
+
+    if (momoResponse.success && momoResponse.payUrl) {
+      // clearCart();
       
-          const canOpen = await Linking.canOpenURL(momoDeeplink);
-          if (canOpen) {
-            await Linking.openURL(momoDeeplink);
-            clearCart();
-            
-            // Chuyển đến trang chờ xác nhận thanh toán
-            router.push({
-              pathname: "/pending",
-              params: {
-                orderNumber: result.data.orderNumber,
-              },
-            });
-          } else {
-            Alert.alert("Lỗi", "Không thể mở trang thanh toán MoMo");
-          }
-          return;
-        } else {
-          Alert.alert(
-            "Lỗi thanh toán",
-            momoResponse.message || "Không thể tạo yêu cầu thanh toán MoMo"
-          );
-          return;
-        }
-      } catch (error) {
-        console.error("MoMo payment error:", error);
-        Alert.alert(
-          "Lỗi",
-          "Có lỗi xảy ra khi tạo thanh toán MoMo"
-        );
-        return;
-      }
+      // Chuyển đến màn hình WebView
+      router.push({
+        pathname: '/momo_web',
+        params: {
+          payUrl: momoResponse.payUrl,
+          orderNumber: result.data.orderNumber,
+          orderData: JSON.stringify(result.data),
+        },
+      });
+    } else {
+      Alert.alert(
+        "Lỗi thanh toán",
+        momoResponse.message || "Không thể tạo yêu cầu thanh toán MoMo"
+      );
     }
+  } catch (error) {
+    console.error("MoMo payment error:", error);
+    Alert.alert("Lỗi", "Có lỗi xảy ra khi tạo thanh toán MoMo");
+  }
+  return;
+}
       // Nếu chọn Pay Later, tạo transaction trong SPayLater
       if (selectedPayment === 5 && result.data.id) {
         const transactionResult = await createTransaction(

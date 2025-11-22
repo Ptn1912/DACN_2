@@ -1,6 +1,6 @@
-// app/all-products.tsx
+// app/mall.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams, useRouter } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Dimensions,
@@ -8,7 +8,6 @@ import {
   Image,
   StatusBar,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   ActivityIndicator,
@@ -25,31 +24,30 @@ const ITEM_WIDTH = (width - HORIZ_PADDING * 2 - GAP * (NUM_COLUMNS - 1)) / NUM_C
 const ITEMS_PER_PAGE = 8;
 
 export default function AllProductsScreen() {
-  const { query, category } = useLocalSearchParams();
-  const [searchQuery, setSearchQuery] = useState<string>(String(query ?? ""));
+  const { category } = useLocalSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
-  const [filtered, setFiltered] = useState<Product[]>([]);
   const [page, setPage] = useState<number>(1);
   const [favorites, setFavorites] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [sortBy, setSortBy] = useState<"newest" | "popular">("newest");
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [category, sortBy]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
 
       const productsResult = await productService.getProducts({ 
+        categoryId: category ? Number(category) : undefined,
+        sortBy: sortBy,
         limit: 100,
-        ...(category && { categoryId: Number(category) })
       });
 
       if (productsResult.success && productsResult.data) {
         setProducts(productsResult.data.products);
-        setFiltered(productsResult.data.products);
       }
     } catch (error) {
       console.error("Fetch data error:", error);
@@ -64,36 +62,16 @@ export default function AllProductsScreen() {
     setRefreshing(false);
   };
 
-  // Filter products when search query changes
-  useEffect(() => {
-    const q = searchQuery.trim().toLowerCase();
-
-    if (q.length > 0) {
-      setFiltered(
-        products.filter((p) => p.name.toLowerCase().includes(q))
-      );
-    } else if (query) {
-      const qp = String(query).trim().toLowerCase();
-      setFiltered(
-        products.filter((p) => p.name.toLowerCase().includes(qp))
-      );
-    } else {
-      setFiltered(products);
-    }
-    setPage(1);
-  }, [searchQuery, query, products]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(products.length / ITEMS_PER_PAGE));
 
   const pagedData = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
-    return filtered.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtered, page]);
+    return products.slice(start, start + ITEMS_PER_PAGE);
+  }, [products, page]);
 
   const formatPrice = (price: number) => {
-  return Number(price).toLocaleString('vi-VN') + ' ₫';
-};
-
+    return Number(price).toLocaleString('vi-VN') + ' ₫';
+  };
 
   const toggleFav = (id: number) => {
     setFavorites((s) => ({ ...s, [id]: !s[id] }));
@@ -201,22 +179,53 @@ export default function AllProductsScreen() {
 
       {/* Header */}
       <View className="bg-white px-4 pt-4 pb-3 border-b border-gray-100">
-        <View className="flex-row items-center">
-          <View className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-4 py-1">
-            <Ionicons name="search" size={20} color="#9CA3AF" />
-            <TextInput
-              placeholder="Tìm kiếm sản phẩm..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="flex-1 ml-3 text-gray-900"
-              placeholderTextColor="#9CA3AF"
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
+        {/* Search Bar - Tap to open Search Screen */}
+        <TouchableOpacity
+          onPress={() => router.push('/search')}
+          className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3 mb-3"
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search" size={20} color="#9CA3AF" />
+          <Text className="flex-1 ml-3 text-gray-500">
+            Tìm kiếm sản phẩm...
+          </Text>
+          <Ionicons name="options" size={20} color="#3B82F6" />
+        </TouchableOpacity>
+
+        {/* Sort Options */}
+        <View className="flex-row items-center justify-between">
+          <Text className="text-gray-900 font-bold text-base">
+            {category ? "Sản phẩm theo danh mục" : "Tất cả sản phẩm"}
+          </Text>
+          <View className="flex-row space-x-2">
+            <TouchableOpacity
+              onPress={() => setSortBy("newest")}
+              className={`px-4 py-2 rounded-xl ${
+                sortBy === "newest" ? "bg-blue-600" : "bg-gray-100"
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  sortBy === "newest" ? "text-white" : "text-gray-700"
+                }`}
+              >
+                Mới nhất
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setSortBy("popular")}
+              className={`px-4 py-2 rounded-xl ${
+                sortBy === "popular" ? "bg-blue-600" : "bg-gray-100"
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  sortBy === "popular" ? "text-white" : "text-gray-700"
+                }`}
+              >
+                Bán chạy
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -225,14 +234,11 @@ export default function AllProductsScreen() {
       <View className="flex-1 px-4 pt-4">
         {/* Results Header */}
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-base font-bold text-gray-900">
-            {searchQuery || query ? `"${searchQuery || query}"` : "Tất cả sản phẩm"}
-          </Text>
-          <Text className="text-sm text-gray-500">{filtered.length} sản phẩm</Text>
+          <Text className="text-sm text-gray-500">{products.length} sản phẩm</Text>
         </View>
 
         {/* Products List */}
-        {filtered.length > 0 ? (
+        {products.length > 0 ? (
           <FlatList
             data={pagedData}
             keyExtractor={(item) => item.id.toString()}
@@ -256,8 +262,8 @@ export default function AllProductsScreen() {
           </View>
         )}
 
-        {/* Pagination */}
-        {filtered.length > 0 && (
+        {/* Pagination
+        {products.length > 0 && (
           <View className="absolute bottom-4 left-4 right-4 bg-white rounded-2xl shadow-lg border border-gray-100 p-4">
             <View className="flex-row items-center justify-between">
               <TouchableOpacity
@@ -299,7 +305,7 @@ export default function AllProductsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        )}
+        )} */}
       </View>
     </SafeAreaView>
   );
