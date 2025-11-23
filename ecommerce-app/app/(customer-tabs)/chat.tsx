@@ -1,3 +1,4 @@
+// app/chat.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -8,20 +9,62 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  StatusBar, // Đã chuyển import từ react-native
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router'; // Thêm useLocalSearchParams
 import { useChat } from '@/hooks/useChat';
 
 export default function ChatScreen() {
-  const { messages, currentConversation, sendMessage, loading } = useChat();
+  const { conversationId } = useLocalSearchParams(); // Lấy conversationId từ params
+  const { 
+    messages, 
+    currentConversation, 
+    sendMessage, 
+    loading, 
+    selectConversation,
+    getConversationById,
+    loadConversations 
+  } = useChat();
   const [newMessage, setNewMessage] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    if (scrollViewRef.current) {
+    initializeConversation();
+  }, [conversationId]);
+
+  const initializeConversation = async () => {
+    if (conversationId) {
+      try {
+        console.log('Initializing conversation with ID:', conversationId);
+        
+        // Tải lại danh sách conversations trước
+        await loadConversations();
+        
+        // Tìm conversation theo ID
+        const conversation = await getConversationById(conversationId as string);
+        
+        if (conversation) {
+          console.log('Found conversation:', conversation);
+          selectConversation(conversation);
+        } else {
+   
+        }
+      } catch (error) {
+        console.error('Error initializing conversation:', error);
+      } finally {
+        setInitializing(false);
+      }
+    } else {
+      setInitializing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (scrollViewRef.current && messages.length > 0) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -42,10 +85,24 @@ export default function ChatScreen() {
     });
   };
 
+  // Hiển thị loading khi đang khởi tạo
+  if (initializing) {
+    return (
+      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text className="text-gray-600 mt-4">Đang tải cuộc trò chuyện...</Text>
+      </SafeAreaView>
+    );
+  }
+
   if (!currentConversation) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <Text className="text-gray-600">Không tìm thấy cuộc trò chuyện</Text>
+        <Ionicons name="chatbubble-outline" size={64} color="#D1D5DB" />
+        <Text className="text-gray-600 mt-4">Không tìm thấy cuộc trò chuyện</Text>
+        <Text className="text-gray-400 text-center mt-2 px-4">
+          {conversationId ? `ID: ${conversationId}` : 'Không có ID cuộc trò chuyện'}
+        </Text>
         <TouchableOpacity 
           className="mt-4 bg-blue-500 px-4 py-2 rounded-lg"
           onPress={() => router.back()}
@@ -56,10 +113,9 @@ export default function ChatScreen() {
     );
   }
 
+  // ... phần còn lại của component giữ nguyên
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
       {/* Header */}
       <View className="bg-white px-4 py-3 border-b border-gray-100 flex-row items-center">
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
@@ -82,7 +138,7 @@ export default function ChatScreen() {
             <Text className="text-gray-500 text-xs">
               {currentConversation.isOnline 
                 ? 'Đang hoạt động' 
-                : `Hoạt động ${formatMessageTime(currentConversation.lastSeen || new Date())}`
+                : `Hoạt động ${formatMessageTime(currentConversation.lastMessageTime)}`
               }
             </Text>
           </View>

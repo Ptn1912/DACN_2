@@ -1,3 +1,4 @@
+// types/chat.ts
 export interface Message {
   id: string;
   text: string;
@@ -5,26 +6,19 @@ export interface Message {
   senderName: string;
   senderType: 'customer' | 'seller';
   timestamp: Date;
-  productId?: string;
-  productName?: string;
   read: boolean;
+  productName?: string;
+  productId?: string;
 }
 
 export interface Conversation {
   id: string;
   participantId: string;
   participantName: string;
-  participantAvatar?: string;
+  participantType: 'customer' | 'seller';
+  participantAvatar: string;
   lastMessage: string;
   lastMessageTime: Date;
   unreadCount: number;
   isOnline: boolean;
-  lastSeen?: Date;
-}
-
-export interface ChatState {
-  conversations: Conversation[];
-  currentConversation: Conversation | null;
-  messages: Message[];
-  loading: boolean;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,36 +6,20 @@ import {
   ScrollView,
   Image,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useChat } from '@/hooks/useChat';
-import { Conversation } from '@/types/chat';
 
-export default function InboxScreen() {
+export default function SellerInboxScreen() {
   const { 
     conversations, 
     loading, 
-    error, 
     selectConversation, 
     loadConversations,
-    clearError 
   } = useChat();
   const [refreshing, setRefreshing] = useState(false);
-
-  // Xử lý hiển thị lỗi
-  useEffect(() => {
-    if (error) {
-      Alert.alert('Lỗi', error, [
-        { 
-          text: 'OK', 
-          onPress: () => clearError() 
-        }
-      ]);
-    }
-  }, [error]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -43,7 +27,7 @@ export default function InboxScreen() {
     setRefreshing(false);
   };
 
-  const handleSelectConversation = (conversation: Conversation) => {
+  const handleSelectConversation = (conversation: any) => {
     selectConversation(conversation);
     router.push('/chat');
   };
@@ -58,8 +42,6 @@ export default function InboxScreen() {
         hour: '2-digit',
         minute: '2-digit',
       });
-    } else if (diffInHours < 168) {
-      return messageDate.toLocaleDateString('vi-VN', { weekday: 'short' });
     } else {
       return messageDate.toLocaleDateString('vi-VN', {
         month: 'short',
@@ -93,7 +75,7 @@ export default function InboxScreen() {
               Chưa có tin nhắn
             </Text>
             <Text className="text-gray-400 text-center mt-2">
-              Khi bạn có tin nhắn từ cửa hàng, chúng sẽ xuất hiện ở đây
+              Khi bạn có tin nhắn từ khách hàng, chúng sẽ xuất hiện ở đây
             </Text>
           </View>
         ) : (
@@ -119,7 +101,7 @@ export default function InboxScreen() {
                     {conversation.participantName}
                   </Text>
                   <Text className="text-gray-400 text-xs">
-                    {formatTime(conversation.lastMessageTime)}
+                    {formatTime(new Date(conversation.lastMessageTime))}
                   </Text>
                 </View>
 
@@ -133,7 +115,7 @@ export default function InboxScreen() {
                   {conversation.unreadCount > 0 && (
                     <View className="bg-red-500 rounded-full min-w-5 h-5 items-center justify-center">
                       <Text className="text-white text-xs font-medium px-1">
-                        {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                        {conversation.unreadCount}
                       </Text>
                     </View>
                   )}

@@ -28,34 +28,6 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#fff' },
-      }}
-    >
-      <Stack.Screen 
-        name="(auth)/login" 
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
-        name="(auth)/register"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen 
-        name="(customer-tabs)" 
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen name="inbox" />
-      <Stack.Screen name="chat" />
-      <Stack.Screen name="index" />
-    </Stack>
       <CartProvider>
         <Stack
           screenOptions={{
@@ -81,6 +53,9 @@ export default function RootLayout() {
               headerShown: false,
             }}
           />
+          <Stack.Screen name="inbox" />
+          <Stack.Screen name="chat" />
+          <Stack.Screen name="index" />
         </Stack>
       </CartProvider>
     </AuthProvider>
