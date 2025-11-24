@@ -3,14 +3,13 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Generate unique order number
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString();
   const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   return `ORD${timestamp}${random}`;
 }
 
-// GET /api/orders - Get orders (customer: their orders, seller: orders containing their products)
+// --- GET: Lấy danh sách đơn hàng ---
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -28,7 +27,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let where: any = {};
+    const where: any = {};
 
     if (userType === 'customer') {
       where.customerId = userId;
@@ -50,32 +49,13 @@ export async function GET(request: NextRequest) {
         include: {
           items: {
             include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  images: true,
-                },
-              },
-              seller: {
-                select: {
-                  id: true,
-                  fullName: true,
-                },
-              },
+              product: { select: { id: true, name: true, images: true } },
+              seller: { select: { id: true, fullName: true } },
             },
           },
-          customer: {
-            select: {
-              id: true,
-              fullName: true,
-              phone: true,
-            },
-          },
+          customer: { select: { id: true, fullName: true, phone: true } },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       }),
@@ -100,7 +80,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/orders - Create new order
+// --- POST: Tạo đơn hàng mới ---
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -115,12 +95,8 @@ export async function POST(request: NextRequest) {
       advancePaymentAmount = 0,
     } = body;
 
-    // Validation
-    if (!customerId || !items || items.length === 0) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+    if (!customerId || !items || items.length === 0 || !shippingName || !shippingPhone || !shippingAddress) {
+      return NextResponse.json({ error: 'Missing required fields or shipping information' }, { status: 400 });
     }
 
     if (!shippingName || !shippingPhone || !shippingAddress) {
@@ -146,39 +122,22 @@ export async function POST(request: NextRequest) {
     // Verify all products exist and have enough stock
     const productIds = items.map((item: any) => item.productId);
     const products = await prisma.product.findMany({
-      where: {
-        id: { in: productIds },
-      },
+      where: { id: { in: productIds } },
+      include: { seller: { select: { id: true } } } 
     });
 
     if (products.length !== productIds.length) {
-      return NextResponse.json(
-        { error: 'Some products not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Some products not found' }, { status: 404 });
     }
 
-    // Check stock availability
-    for (const item of items) {
-      const product = products.find((p: any) => p.id === item.productId);
-      if (!product) {
-        return NextResponse.json(
-          { error: `Product ${item.productId} not found` },
-          { status: 404 }
-        );
-      }
-      if (product.stock < item.quantity) {
-        return NextResponse.json(
-          { error: `Product "${product.name}" has insufficient stock` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Calculate totals
     let totalAmount = 0;
     const orderItems = items.map((item: any) => {
       const product = products.find((p: any) => p.id === item.productId);
+
+      if (!product || product.stock < item.quantity) {
+        throw new Error(`Product "${product?.name || item.productId}" has insufficient stock`);
+      }
+
       const subtotal = Number(product!.price) * item.quantity;
       totalAmount += subtotal;
 
@@ -196,62 +155,71 @@ export async function POST(request: NextRequest) {
     const shippingFee = 30000;
     totalAmount += shippingFee;
 
-    // Create order with items
-    const order = await prisma.order.create({
-      data: {
-        orderNumber: generateOrderNumber(),
-        customerId,
-        totalAmount,
-        shippingFee,
-        paymentMethod: paymentMethod || 'cod',
-        shippingName,
-        shippingPhone,
-        shippingAddress,
-        note,
-        items: {
-          create: orderItems,
+    // 4. THỰC HIỆN TRANSACTION (Đảm bảo tạo đơn hàng và cập nhật tồn kho thành công đồng thời)
+    const order = await prisma.$transaction(async (tx) => {
+      const newOrder = await tx.order.create({
+        data: {
+          orderNumber: generateOrderNumber(),
+          customerId,
+          totalAmount,
+          shippingFee,
+          paymentMethod: paymentMethod || 'cod',
+          shippingName,
+          shippingPhone,
+          shippingAddress,
+          note,
+          items: { create: orderItems },
         },
-      },
-      include: {
-        items: {
-          include: {
-            product: true,
-            seller: {
-              select: {
-                id: true,
-                fullName: true,
-              },
-            },
+        include: { items: true },
+      });
+
+      // B. Cập nhật tồn kho và số lượng đã bán
+      const updatePromises = items.map((item: any) =>
+        tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: { decrement: item.quantity },
+            soldCount: { increment: item.quantity },
           },
-        },
-        customer: {
-          select: {
-            id: true,
-            fullName: true,
-            phone: true,
-          },
-        },
-      },
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      return newOrder;
     });
 
-    // Update product stock and sold count
-    for (const item of items) {
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          stock: {
-            decrement: item.quantity,
-          },
-          soldCount: {
-            increment: item.quantity,
-          },
-        },
-      });
+    // 5. Gửi thông báo DB
+    const notifiedSellers = new Set<number>();
+    for (const item of order.items) {
+      if (!notifiedSellers.has(item.sellerId)) {
+        const title = "Đơn hàng mới";
+        const message = `Bạn có đơn hàng mới #${order.orderNumber}`;
+
+        // Tạo thông báo DB
+        await prisma.notification.create({
+          data: { userId: item.sellerId, type: "order", title: title, message: message, actionUrl: `/orders/${order.id}` },
+        });
+
+        notifiedSellers.add(item.sellerId);
+      }
     }
 
-    return NextResponse.json(order, { status: 201 });
-  } catch (error) {
+    // 6. Lấy lại đơn hàng với đủ thông tin include cho response
+    const finalOrder = await prisma.order.findUnique({
+      where: { id: order.id },
+      include: {
+        items: { include: { product: true, seller: { select: { id: true, fullName: true } } } },
+        customer: { select: { id: true, fullName: true, phone: true } },
+      }
+    });
+
+    return NextResponse.json(finalOrder, { status: 201 });
+  } catch (error: any) {
     console.error('Create order error:', error);
+    if (error.message.includes('insufficient stock')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json(
       { error: 'Failed to create order' },
       { status: 500 }

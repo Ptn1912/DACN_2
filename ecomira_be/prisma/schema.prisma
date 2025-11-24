@@ -21,6 +21,7 @@ model User {
   orders            Order[]            @relation("CustomerOrders")
   products          Product[]          @relation("UserProducts")
   sessions          Session[]
+  notifications Notification[]
   spaylaterCustomer SPayLaterCustomer?
 
   @@index([email])
@@ -233,4 +234,18 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  type        String   // order | system | promotion | review | message
+  title       String
+  message     String
+  actionUrl   String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  @@map("notifications")
 }

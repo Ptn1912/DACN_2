@@ -112,10 +112,8 @@ export default function OrdersScreen() {
     handleUpdateStatus(orderId, 'cancelled', 'Đã hủy đơn hàng thành công.', (id) => orderService.cancelOrder(id));
   };
 
-  // Nút Chuẩn bị xong/Bắt đầu giao (Confirmed/Preparing -> Shipping) - Giả định API
+  // Nút Chuẩn bị xong/Bắt đầu giao (Confirmed/Preparing -> Shipping)
   const handleShipOrder = (orderId: number) => {
-    // Tùy thuộc vào business logic, API này có thể là 'shipOrder'
-    // Giả định orderService có hàm shipOrder
     handleUpdateStatus(orderId, 'shipping', 'Đơn hàng đã được chuyển sang trạng thái Đang giao.', (id) => orderService.shipOrder(id));
   };
 
