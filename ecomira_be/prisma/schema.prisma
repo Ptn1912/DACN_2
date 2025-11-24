@@ -17,11 +17,19 @@ model User {
   isVerified        Boolean            @default(false) @map("is_verified")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
+  
+  // Existing relations
   sellerItems       OrderItem[]        @relation("SellerOrderItems")
   orders            Order[]            @relation("CustomerOrders")
   products          Product[]          @relation("UserProducts")
   sessions          Session[]
   spaylaterCustomer SPayLaterCustomer?
+  
+  // New chat relations
+  conversationsAsUser1 Conversation[] @relation("ConversationUser1")
+  conversationsAsUser2 Conversation[] @relation("ConversationUser2")
+  sentMessages         Message[]      @relation("MessageSender")
+  receivedMessages     Message[]      @relation("MessageReceiver")
 
   @@index([email])
   @@index([userType])
@@ -55,9 +63,14 @@ model Product {
   isActive    Boolean     @default(true) @map("is_active")
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  // Existing relations
   orderItems  OrderItem[]
   category    Category    @relation(fields: [categoryId], references: [id])
   seller      User        @relation("UserProducts", fields: [sellerId], references: [id])
+  
+  // New chat relation
+  messages    Message[]
 
   @@index([categoryId])
   @@index([sellerId])
@@ -94,6 +107,8 @@ model Order {
   note                  String?
   createdAt             DateTime               @default(now()) @map("created_at")
   updatedAt             DateTime               @updatedAt @map("updated_at")
+  
+  // Existing relations
   items                 OrderItem[]
   customer              User                   @relation("CustomerOrders", fields: [customerId], references: [id])
   spaylaterTransactions SPayLaterTransaction[]
@@ -115,6 +130,8 @@ model OrderItem {
   subtotal    Decimal  @db.Decimal(12, 2)
   image       String?
   createdAt   DateTime @default(now()) @map("created_at")
+  
+  // Existing relations
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id])
   seller      User     @relation("SellerOrderItems", fields: [sellerId], references: [id])
@@ -139,6 +156,8 @@ model SPayLaterCustomer {
   bankName        String?                @map("bank_name")
   createdAt       DateTime               @default(now()) @map("created_at")
   updatedAt       DateTime               @updatedAt @map("updated_at")
+  
+  // Existing relations
   user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments        SPayLaterPayment[]
   transactions    SPayLaterTransaction[]
@@ -160,6 +179,8 @@ model SPayLaterTransaction {
   metadata           Json?
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
+  
+  // Existing relations
   payments           SPayLaterPayment[]
   customer           SPayLaterCustomer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   order              Order?             @relation(fields: [orderId], references: [id])
@@ -181,6 +202,8 @@ model SPayLaterPayment {
   status             PaymentStatus        @default(PENDING)
   metadata           Json?
   createdAt          DateTime             @default(now()) @map("created_at")
+  
+  // Existing relations
   customer           SPayLaterCustomer    @relation(fields: [customerId], references: [id])
   transaction        SPayLaterTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
@@ -188,6 +211,52 @@ model SPayLaterPayment {
   @@index([customerId])
   @@index([paymentDate])
   @@map("spaylater_payments")
+}
+
+model Conversation {
+  id                 Int      @id @default(autoincrement())
+  user1Id            Int      @map("user1_id")
+  user2Id            Int      @map("user2_id")
+  lastMessage        String?  @map("last_message")
+  lastMessageTime    DateTime? @map("last_message_time")
+  unreadCountUser1   Int      @default(0) @map("unread_count_user1")
+  unreadCountUser2   Int      @default(0) @map("unread_count_user2")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user1              User     @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2              User     @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages           Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+  @@map("conversations")
+}
+
+model Message {
+  id              Int      @id @default(autoincrement())
+  conversationId  Int      @map("conversation_id")
+  senderId        Int      @map("sender_id")
+  receiverId      Int      @map("receiver_id")
+  content         String
+  messageType     String   @default("text") @map("message_type")
+  productId       Int?     @map("product_id")
+  isRead          Boolean  @default(false) @map("is_read")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver        User         @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  product         Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+  @@map("messages")
 }
 
 enum UserType {

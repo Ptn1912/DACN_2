@@ -1,4 +1,4 @@
-// app/seller-shop/[sellerId].tsx
+// app/seller-shop/[id].tsx
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -12,10 +12,13 @@ import {
   Dimensions,
   ScrollView,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { productService, Product } from "@/services/productService";
 import { LinearGradient } from "expo-linear-gradient";
+import { useChat } from '@/hooks/useChat'; // Thêm import
+import { useAuth } from '@/hooks/useAuth'; // Thêm import
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = (width - 48) / 2;
@@ -30,7 +33,7 @@ interface SellerInfo {
 }
 
 export default function SellerShopScreen() {
-  const { sellerId } = useLocalSearchParams();
+  const { id } = useLocalSearchParams(); // Sử dụng id thay vì sellerId
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [sellerInfo, setSellerInfo] = useState<SellerInfo | null>(null);
@@ -39,9 +42,13 @@ export default function SellerShopScreen() {
   const [sortBy, setSortBy] = useState<"newest" | "price_asc" | "price_desc" | "popular">("newest");
   const [selectedTab, setSelectedTab] = useState<"all" | "bestseller" | "new">("all");
 
+  // Thêm hooks cho chat
+  const { startNewConversation } = useChat();
+  const { user } = useAuth();
+
   useEffect(() => {
     fetchSellerData();
-  }, [sellerId]);
+  }, [id]); // Sử dụng id
 
   useEffect(() => {
     applySortAndFilter();
@@ -56,7 +63,7 @@ export default function SellerShopScreen() {
 
       if (result.success && result.data) {
         const sellerProducts = result.data.products.filter(
-          (p) => p.seller.id === Number(sellerId)
+          (p) => p.seller.id === Number(id) // Sử dụng id
         );
 
         setProducts(sellerProducts);
@@ -68,7 +75,7 @@ export default function SellerShopScreen() {
             sellerProducts.reduce((sum, p) => sum + p.rating, 0) / sellerProducts.length;
 
           setSellerInfo({
-            id: Number(sellerId),
+            id: Number(id), // Sử dụng id
             fullName: sellerProducts[0].seller.fullName,
             totalProducts: sellerProducts.length,
             totalSold,
@@ -78,11 +85,44 @@ export default function SellerShopScreen() {
         }
       }
     } catch (error) {
-      console.error("Fetch seller data error:", error);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleChat = async () => {
+  if (!user) {
+    Alert.alert(
+      "Đăng nhập required",
+      "Vui lòng đăng nhập để chat với người bán",
+      [
+        { text: "Hủy", style: "cancel" },
+        { text: "Đăng nhập", onPress: () => router.push("/(auth)/login") }
+      ]
+    );
+    return;
+  }
+
+  if (!sellerInfo) return;
+
+  try {
+    const conversation = await startNewConversation(
+      sellerInfo.id.toString(),
+      sellerInfo.fullName,
+      `Xin chào, tôi quan tâm đến cửa hàng của bạn`
+    );
+    
+    // Chuyển đến chat screen với conversationId
+    router.push({
+      pathname: '/chat',
+      params: { conversationId: conversation.id }
+    });
+    
+  } catch (error) {
+    console.error('Error starting conversation:', error);
+    Alert.alert("Lỗi", "Không thể bắt đầu trò chuyện");
+  }
+};
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -217,8 +257,7 @@ export default function SellerShopScreen() {
       {/* Header */}
       <View className="bg-white px-4 pt-2 pb-3 border-b border-gray-100">
         <View className="flex-row items-center justify-between">
-          <TouchableOpacity onPress={() => router.push('/(customer-tabs)/mall'
-          )}>
+          <TouchableOpacity onPress={() => router.push('/(customer-tabs)/mall')}>
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text className="text-gray-900 text-2xl">Cửa hàng</Text>
@@ -280,7 +319,11 @@ export default function SellerShopScreen() {
           </View>
 
           <View className="flex-row mt-4 space-x-3">
-            <TouchableOpacity className="flex-1 bg-white rounded-2xl py-3 items-center">
+            {/* Cập nhật nút Chat ngay */}
+            <TouchableOpacity 
+              onPress={handleChat}
+              className="flex-1 bg-white rounded-2xl py-3 items-center"
+            >
               <View className="flex-row items-center">
                 <Ionicons name="chatbubble-outline" size={18} color="#3B82F6" />
                 <Text className="text-blue-600 font-bold text-sm ml-2">
@@ -299,6 +342,7 @@ export default function SellerShopScreen() {
           </View>
         </LinearGradient>
 
+        {/* Phần còn lại giữ nguyên */}
         {/* Tabs */}
         <View className="px-4 mt-4">
           <ScrollView

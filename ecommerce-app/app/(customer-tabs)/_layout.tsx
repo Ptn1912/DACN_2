@@ -1,6 +1,5 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { CartProvider } from '@/context/CartContext';
 
 export default function TabLayout() {
   return (
@@ -33,10 +32,6 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="product-customer/[id]"
-        options={{ href: null }}
-      />
       <Tabs.Screen
         name="mall"
         options={{
@@ -77,6 +72,22 @@ export default function TabLayout() {
         }}
       />
 
+      {/* Các screen ẩn - không hiển thị trong tab bar */}
+      <Tabs.Screen
+        name="product-customer/[id]"
+        options={{ href: null }}
+      />
+      
+      <Tabs.Screen
+        name="inbox"
+        options={{ href: null }}
+      />
+      
+      <Tabs.Screen
+        name="chat"
+        options={{ href: null }}
+      />
+
       <Tabs.Screen
         name="order/[id]"
         options={{ href: null }}
@@ -107,7 +118,5 @@ export default function TabLayout() {
           }}
         />
     </Tabs>
-
-    
   );
 }

@@ -53,6 +53,9 @@ export default function RootLayout() {
               headerShown: false,
             }}
           />
+          <Stack.Screen name="inbox" />
+          <Stack.Screen name="chat" />
+          <Stack.Screen name="index" />
         </Stack>
       </CartProvider>
     </AuthProvider>
