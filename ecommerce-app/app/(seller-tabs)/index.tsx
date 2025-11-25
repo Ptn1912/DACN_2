@@ -412,6 +412,33 @@ export default function SellerDashboardScreen() {
           ))}
         </View>
       </ScrollView>
+
+      {/* AI Chatbot Button */}
+      <TouchableOpacity
+        onPress={() => router.push('/chatAI')}
+        style={{
+          position: "absolute",
+          bottom: 30,
+          right: 20,
+          backgroundColor: "#FAFAFA",
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOpacity: 0.25,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 10,
+        }}
+      >
+        <Image
+          source={require('../../assets/chatbot.png')} // <-- Thay đổi đường dẫn này
+          style={{ width: 50, height: 50 }}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

@@ -33,6 +33,8 @@ export default function SellerTabLayout() {
           ),
         }}
       />
+      {/* chat AI */}
+      <Tabs.Screen name="chatAI" options={{ href: null }} />
       {/* Add Product */}
       <Tabs.Screen
         name="add-product"
@@ -41,7 +43,7 @@ export default function SellerTabLayout() {
         }}
       />
 
-       <Tabs.Screen
+      <Tabs.Screen
         name="product/[id]"
         options={{
           href: null,
