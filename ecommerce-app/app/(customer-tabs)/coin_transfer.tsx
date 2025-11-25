@@ -1,5 +1,4 @@
 // app/coin_transfer.tsx
-import 'react-native-get-random-values'; // FIX crypto error - MUST BE FIRST
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -17,8 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import web3Service from '@/services/web3Service';
+import web3Service from '@/services/ethersService';
 import { userService, User } from '@/services/userService';
+import walletService from '@/services/walletService';
 
 interface Transaction {
   txHash: string;
@@ -37,6 +37,7 @@ export default function CoinTransferScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isInitializing, setIsInitializing] = useState(true);
   
   // User search modal
   const [showUserModal, setShowUserModal] = useState(false);
@@ -45,10 +46,35 @@ export default function CoinTransferScreen() {
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    loadBalance();
-    loadTransactions();
-    searchUsers(''); // Load initial users
+    initializeScreen();
+    const debug = async () => {
+    await web3Service.getContractOwner();
+  };
+  debug();
   }, []);
+
+  const initializeScreen = async () => {
+    try {
+      setIsInitializing(true);
+      await Promise.all([
+        loadBalance(),
+        loadTransactions(),
+        searchUsers('')
+      ]);
+    } catch (error) {
+      console.error('Initialize error:', error);
+      Alert.alert(
+        'Lỗi khởi tạo',
+        'Không thể kết nối blockchain. Vui lòng kiểm tra:\n1. Hardhat node đang chạy\n2. Contract đã được deploy\n3. Kết nối mạng',
+        [
+          { text: 'Thử lại', onPress: initializeScreen },
+          { text: 'Quay lại', onPress: () => router.push('/(customer-tabs)/profile') }
+        ]
+      );
+    } finally {
+      setIsInitializing(false);
+    }
+  };
 
   const loadBalance = async () => {
     if (!user?.id) return;
@@ -58,9 +84,9 @@ export default function CoinTransferScreen() {
       if (userBalance) {
         setBalance(userBalance.balance);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Load balance error:', error);
-      Alert.alert('Lỗi', 'Không thể tải số dư. Vui lòng kiểm tra kết nối blockchain.');
+      throw error; // Re-throw để initializeScreen catch
     }
   };
 
@@ -68,11 +94,11 @@ export default function CoinTransferScreen() {
     if (!user?.id) return;
     
     try {
-      const history = await web3Service.getTransactionHistory(user.id, 10);
+      const history = await web3Service.getTransactionHistory(user.id);
       setTransactions(history);
     } catch (error) {
       console.error('Load transactions error:', error);
-      // Don't show alert for transaction history errors
+      // Don't throw - transactions are optional
     }
   };
 
@@ -145,52 +171,62 @@ export default function CoinTransferScreen() {
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Chuyển',
-          onPress: performTransfer,
+          onPress: () => performTransfer(transferAmount),
         },
       ]
     );
   };
 
-  const performTransfer = async () => {
-    setIsLoading(true);
+  const performTransfer = async (transferAmount: number) => {
+  setIsLoading(true);
+  
+  try {
+    // Lấy private key của user đang đăng nhập
+    const userPrivateKey = await walletService.getUserPrivateKey(user!.id);
     
-    try {
-      // In production, user's private key should be stored securely
-      // For demo, we'll use a test private key
-      const userPrivateKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
-      
-      const result = await web3Service.transferCoins(
-        user!.id,
-        selectedUser!.id,
-        parseFloat(amount),
-        userPrivateKey
+    if (!userPrivateKey) {
+      Alert.alert(
+        'Lỗi', 
+        'Không tìm thấy ví của bạn. Vui lòng đăng nhập lại.',
+        [{ text: 'OK', onPress: () => router.replace('/login') }]
       );
-
-      if (result.success) {
-        Alert.alert(
-          'Thành công',
-          `Đã chuyển ${amount} COIN thành công!\nTransaction: ${result.txHash?.substring(0, 10)}...`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setSelectedUser(null);
-                setAmount('');
-                loadBalance();
-                loadTransactions();
-              },
-            },
-          ]
-        );
-      } else {
-        Alert.alert('Lỗi', result.error || 'Không thể chuyển coin');
-      }
-    } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Đã xảy ra lỗi');
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
+
+    console.log(`🔄 Transferring ${transferAmount} COIN from user ${user!.id} to user ${selectedUser!.id}`);
+    
+    const result = await web3Service.transferCoins(
+      user!.id,
+      selectedUser!.id,
+      transferAmount,
+      userPrivateKey // Sử dụng private key của user đang đăng nhập
+    );
+
+    if (result.success) {
+      Alert.alert(
+        'Thành công',
+        `Đã chuyển ${transferAmount} COIN thành công!`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setSelectedUser(null);
+              setAmount('');
+              handleRefresh();
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert('Lỗi', result.error || 'Không thể chuyển coin');
+    }
+  } catch (error: any) {
+    console.error('Transfer error:', error);
+    Alert.alert('Lỗi', error.message || 'Đã xảy ra lỗi khi chuyển coin');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('vi-VN', {
@@ -201,6 +237,19 @@ export default function CoinTransferScreen() {
       minute: '2-digit',
     });
   };
+
+  // Show loading screen while initializing
+  if (isInitializing) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text className="text-gray-600 mt-4 text-center px-8">
+          Đang khởi tạo blockchain...{'\n'}
+          Vui lòng đợi trong giây lát
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">

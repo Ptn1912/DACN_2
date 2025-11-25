@@ -4,15 +4,15 @@ require("@nomicfoundation/hardhat-toolbox");
 module.exports = {
   solidity: "0.8.28",
   networks: {
-    hardhat: {
-      chainId: 1337,
-      accounts: {
-        count: 20, // Tạo 20 accounts để test
-        accountsBalance: "10000000000000000000000" // 10000 ETH mỗi account
-      }
+    ganache: {
+      url: "http://127.0.0.1:7545",  // RPC Ganache GUI
+      accounts: [
+        "0xa9ca041c470d1708f73e9d24e01b2fc5ce34d0f18f7e727ba1ff0aaffbf7a51b",
+        // có thể thêm các private key khác từ Ganache
+      ],
     },
     localhost: {
-      url: "http://127.0.0.1:8545",
+      url: "http://127.0.0.1:8",
       chainId: 1337
     }
   },

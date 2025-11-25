@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Linking } from 'react-native';
 import React, { useState, useEffect } from "react";
 import { momoService } from '../../services/momoService';
 import { orderService, PaymentMethod } from "@/services/orderService";
+import ethersService from "@/services/ethersService";
 import {
   Alert,
   Image,
@@ -21,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { useSPayLater } from "@/hooks/useSPayLater";
 import { UserAddress } from "@/services/orderService";
+import walletService from "@/services/walletService";
 
 const getPaymentMethodCode = (selectedPaymentId: number): PaymentMethod => {
   switch (selectedPaymentId) {
@@ -40,8 +42,10 @@ const getPaymentMethodCode = (selectedPaymentId: number): PaymentMethod => {
 };
 
 export default function CheckoutScreen() {
-  const { cart, clearCart } = useCart();
+  const params = useLocalSearchParams();
+  const { cart, buyNowCart, clearCart, clearBuyNowCart } = useCart();
   const { user } = useAuth();
+  const isBuyNowMode = params.mode === 'buyNow';
   const [selectedPayment, setSelectedPayment] = useState(1);
   const [voucherCode, setVoucherCode] = useState("");
   const [note, setNote] = useState("");
@@ -54,6 +58,12 @@ export default function CheckoutScreen() {
   } = useSPayLater();
   const [spaylaterAdvancePayment, setSpaylaterAdvancePayment] = useState(0);
 
+  // Coin states
+  const [coinBalance, setCoinBalance] = useState<number>(0);
+  const [coinToUse, setCoinToUse] = useState<number>(0);
+  const [loadingCoin, setLoadingCoin] = useState(false);
+  const [userPrivateKey, setUserPrivateKey] = useState<string>("");
+
   // Shipping address state
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [shippingName, setShippingName] = useState("");
@@ -61,6 +71,38 @@ export default function CheckoutScreen() {
   const [shippingAddress, setShippingAddress] = useState("");
   const [hasAddress, setHasAddress] = useState(false);
   const [loadingAddress, setLoadingAddress] = useState(false);
+
+  const activeCart = isBuyNowMode ? buyNowCart : cart;
+  const clearActiveCart = isBuyNowMode ? clearBuyNowCart : clearCart;
+  // Load coin balance
+  useEffect(() => {
+    const loadCoinBalance = async () => {
+      if (!user) return;
+      
+      setLoadingCoin(true);
+      try {
+        // Get user's coin balance
+        const balanceData = await ethersService.getUserBalance(user.id);
+        if (balanceData) {
+          const balance = parseFloat(balanceData.balance);
+          setCoinBalance(balance);
+          console.log('💰 User coin balance:', balance);
+        }
+
+        // Get user's private key for transaction
+        const privateKey = await walletService.getUserPrivateKey(user.id);
+        if (privateKey) {
+          setUserPrivateKey(privateKey);
+        }
+      } catch (error) {
+        console.error("Error loading coin balance:", error);
+      } finally {
+        setLoadingCoin(false);
+      }
+    };
+
+    loadCoinBalance();
+  }, [user]);
 
   // Load address from last order
   useEffect(() => {
@@ -97,14 +139,16 @@ export default function CheckoutScreen() {
     return Number(price).toLocaleString("vi-VN") + " ₫";
   };
 
-  const subtotal = cart.reduce(
+  const subtotal = activeCart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
   const shippingFee = 30000;
   const discount = 0;
-  const total = subtotal + shippingFee - discount;
+  // Tính toán giảm giá từ coin (1 COIN = 1000 VND)
+  const coinDiscount = coinToUse * 1000;
+  const total = Math.max(0, subtotal + shippingFee - discount - coinDiscount);
 
   useEffect(() => {
     if (selectedPayment === 5 && customer) {
@@ -115,6 +159,32 @@ export default function CheckoutScreen() {
   }, [selectedPayment, total, customer]);
 
   const finalTotal = selectedPayment === 5 ? 0 : total;
+  // Handle coin usage
+  const handleUseMaxCoin = () => {
+    const maxCoinCanUse = Math.min(
+      coinBalance,
+      Math.floor((subtotal + shippingFee - discount) / 1000)
+    );
+    setCoinToUse(maxCoinCanUse);
+  };
+
+  const handleCoinInputChange = (value: string) => {
+    const numValue = parseInt(value) || 0;
+    const maxCoinCanUse = Math.min(
+      coinBalance,
+      Math.floor((subtotal + shippingFee - discount) / 1000)
+    );
+    
+    if (numValue > maxCoinCanUse) {
+      Alert.alert(
+        "Thông báo",
+        `Số coin tối đa có thể sử dụng là ${maxCoinCanUse} COIN`
+      );
+      setCoinToUse(maxCoinCanUse);
+    } else {
+      setCoinToUse(numValue);
+    }
+  };
 
   const validateShippingInfo = () => {
     if (!shippingName.trim()) {
@@ -148,7 +218,7 @@ export default function CheckoutScreen() {
 
   const handlePlaceOrder = async () => {
     try {
-      if (cart.length === 0) {
+      if (activeCart.length === 0) {
         Alert.alert(
           "Lỗi",
           "Giỏ hàng trống. Vui lòng thêm sản phẩm để đặt hàng."
@@ -207,9 +277,60 @@ export default function CheckoutScreen() {
         return;
       }
 
+      // Kiểm tra nếu sử dụng coin
+      if (coinToUse > 0) {
+        if (coinToUse > coinBalance) {
+          Alert.alert("Lỗi", "Số dư coin không đủ");
+          return;
+        }
+        if (!userPrivateKey) {
+          Alert.alert("Lỗi", "Không tìm thấy thông tin ví của bạn");
+          return;
+        }
+      }
+
       setLoading(true);
 
-      const items = cart.map((item) => ({
+      // Nếu sử dụng coin, chuyển coin cho contract owner (system)
+      if (coinToUse > 0) {
+        try {
+          console.log('💸 Transferring', coinToUse, 'COIN to system...');
+          // Get contract owner ID (giả sử owner ID = 1, bạn có thể điều chỉnh)
+          const SYSTEM_OWNER_ID = 1;
+          
+          const transferResult = await ethersService.transferCoins(
+            user.id,
+            SYSTEM_OWNER_ID,
+            coinToUse,
+            userPrivateKey
+          );
+
+          if (!transferResult.success) {
+            Alert.alert(
+              "Lỗi thanh toán Coin",
+              transferResult.error || "Không thể chuyển coin. Vui lòng thử lại."
+            );
+            return;
+          }
+
+          console.log('✅ Coin transferred successfully');
+          
+          // Cập nhật lại số dư coin
+          const newBalance = await ethersService.getUserBalance(user.id);
+          if (newBalance) {
+            setCoinBalance(parseFloat(newBalance.balance));
+          }
+        } catch (error) {
+          console.error('❌ Coin transfer error:', error);
+          Alert.alert(
+            "Lỗi",
+            "Có lỗi xảy ra khi thanh toán bằng coin. Vui lòng thử lại."
+          );
+          return;
+        }
+      }
+
+      const items = activeCart.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
       }));
@@ -223,9 +344,8 @@ export default function CheckoutScreen() {
         paymentMethod: getPaymentMethodCode(selectedPayment),
         note: note.trim(),
         advancePaymentAmount: 0,
+        coinDiscount: coinDiscount, // Thêm giảm giá coin
       };
-
-      console.log("Creating order with:", body);
 
       // Tạo đơn hàng
       const result = await orderService.createOrder(body);
@@ -313,13 +433,15 @@ export default function CheckoutScreen() {
         }
       }
 
-      clearCart();
+      clearActiveCart();
 
       router.push({
         pathname: "/order_success",
         params: {
           orderData: JSON.stringify(result.data),
           usedPayLater: selectedPayment === 5 ? "true" : "false",
+          usedCoin: coinToUse > 0 ? "true" : "false",
+          coinAmount: coinToUse.toString(),
         },
       });
     } catch (error) {
@@ -392,11 +514,11 @@ export default function CheckoutScreen() {
           <View className="flex-row items-center mb-4">
             <Ionicons name="cart" size={20} color="#2563EB" />
             <Text className="text-gray-900 font-bold text-base ml-2">
-              Sản phẩm ({cart.length})
+              Sản phẩm ({activeCart.length})
             </Text>
           </View>
 
-          {cart.map((item) => (
+          {activeCart.map((item) => (
             <View
               key={item.id}
               className="flex-row mb-4 pb-4 border-b border-gray-100"
@@ -419,6 +541,68 @@ export default function CheckoutScreen() {
               </View>
             </View>
           ))}
+        </View>
+        {/* Coin Payment Section */}
+        <View className="bg-white mt-2 px-4 py-4">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center">
+              <Ionicons name="wallet" size={20} color="#F59E0B" />
+              <Text className="text-gray-900 font-bold text-base ml-2">
+                Sử dụng Coin
+              </Text>
+            </View>
+            {loadingCoin ? (
+              <ActivityIndicator size="small" color="#F59E0B" />
+            ) : (
+              <Text className="text-amber-600 font-semibold">
+                {coinBalance.toFixed(0)} COIN
+              </Text>
+            )}
+          </View>
+
+          <View className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+            <Text className="text-amber-800 text-xs mb-3">
+              💰 1 COIN = 1,000₫ | Tối đa: {Math.min(
+                coinBalance,
+                Math.floor((subtotal + shippingFee - discount) / 1000)
+              )} COIN
+            </Text>
+
+            <View className="flex-row items-center space-x-2">
+              <View className="flex-1 flex-row items-center bg-white rounded-xl px-4 py-1 border border-amber-300">
+                <Ionicons name="cash-outline" size={20} color="#F59E0B" />
+                <TextInput
+                  placeholder="Nhập số coin"
+                  value={coinToUse.toString()}
+                  onChangeText={handleCoinInputChange}
+                  keyboardType="numeric"
+                  className="flex-1 ml-3 text-gray-900"
+                  placeholderTextColor="#9CA3AF"
+                />
+                <Text className="text-amber-600 font-semibold">COIN</Text>
+              </View>
+              
+              <TouchableOpacity
+                className="bg-amber-500 rounded-xl py-3 px-4"
+                onPress={handleUseMaxCoin}
+              >
+                <Text className="text-white font-semibold text-xs">Tối đa</Text>
+              </TouchableOpacity>
+            </View>
+
+            {coinToUse > 0 && (
+              <View className="mt-3 pt-3 border-t border-amber-200">
+                <View className="flex-row justify-between">
+                  <Text className="text-amber-700 font-medium">
+                    Giảm giá từ Coin:
+                  </Text>
+                  <Text className="text-green-600 font-bold">
+                    -{formatPrice(coinDiscount)}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Voucher */}

@@ -86,8 +86,8 @@ export default function ProductDetailCusScreen() {
     }
   };
 
-  const { addToCart } = useCart();
-
+  const { addToCart, setBuyNowCart } = useCart();
+  
   const handleAddToCart = () => {
     if (!product) return;
 
@@ -110,37 +110,37 @@ export default function ProductDetailCusScreen() {
   };
 
   const handleBuyNow = () => {
-    if (!product) return;
+  if (!product) return;
 
-    if (product.stock === 0) {
-      Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
-      return;
-    }
+  if (product.stock === 0) {
+    Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
+    return;
+  }
 
-    if (quantity > product.stock) {
-      Alert.alert('Thông báo', `Chỉ còn ${product.stock} sản phẩm trong kho`);
-      return;
-    }
+  if (quantity > product.stock) {
+    Alert.alert('Thông báo', `Chỉ còn ${product.stock} sản phẩm trong kho`);
+    return;
+  }
 
-    Alert.alert(
-      'Mua ngay',
-      'Chuyển đến trang thanh toán?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đồng ý', onPress: () => {
-            router.push({
-              pathname: '/checkout',
-              params: {
-                productId: product.id,
-                quantity: quantity,
-              },
-            });
-          }
-        }
-      ]
-    );
+  // Tạo giỏ hàng "Mua ngay" riêng biệt
+  const buyNowItem = {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    image: product.images[0],
+    quantity: quantity,
   };
+
+  // Set buy now cart và chuyển tới checkout với flag
+  setBuyNowCart([buyNowItem]);
+  
+  router.push({
+    pathname: '/checkout',
+    params: {
+      mode: 'buyNow' // Flag để checkout biết đây là "Mua ngay"
+    }
+  });
+};
 
   const increaseQuantity = () => {
     if (product && quantity < product.stock) {

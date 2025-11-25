@@ -45,6 +45,8 @@ const mapPaymentMethod = (code: string) => {
 
 export default function OrderSuccessScreen() {
   const params = useLocalSearchParams();
+  const usedCoin = params.usedCoin === 'true';
+  const coinAmount = parseInt(params.coinAmount as string || '0');
   const actualOrder: ActualOrderData | null = useMemo(() => {
     if (params.orderData && typeof params.orderData === 'string') {
       try {
@@ -258,6 +260,15 @@ export default function OrderSuccessScreen() {
             </View>
             <Text className="text-gray-900 font-medium ml-7">
               {orderInfo.paymentMethod}
+            </Text>
+          </View>
+          <View className="mt-4 pt-4 border-t border-gray-100">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="logo-bitcoin" size={18} color="yellow" />
+              <Text className="text-gray-600 text-sm ml-2">Số coin đã sử dụng:</Text>
+            </View>
+            <Text className="text-gray-900 font-medium ml-7">
+              {coinAmount}
             </Text>
           </View>
 

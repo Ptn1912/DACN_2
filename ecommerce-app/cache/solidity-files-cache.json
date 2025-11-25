@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "D:\\Ecomira_App\\ecommerce-app\\contracts\\CoinToken.sol": {
-      "lastModificationDate": 1763818689048,
-      "contentHash": "30e94b0b1786ef9353faf2cd2f4667e1",
+      "lastModificationDate": 1763979698438,
+      "contentHash": "1bba7ffa8fc73ff050ded0f61a45cc4d",
       "sourceName": "contracts/CoinToken.sol",
       "solcConfig": {
         "version": "0.8.28",

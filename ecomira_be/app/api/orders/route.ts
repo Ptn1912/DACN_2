@@ -93,20 +93,13 @@ export async function POST(request: NextRequest) {
       paymentMethod,
       note,
       advancePaymentAmount = 0,
+      coinDiscount = 0, // Nhận coin discount từ frontend
     } = body;
 
     if (!customerId || !items || items.length === 0 || !shippingName || !shippingPhone || !shippingAddress) {
       return NextResponse.json({ error: 'Missing required fields or shipping information' }, { status: 400 });
     }
 
-    if (!shippingName || !shippingPhone || !shippingAddress) {
-      return NextResponse.json(
-        { error: 'Missing shipping information' },
-        { status: 400 }
-      );
-    }
-
-    
     // Verify customer exists
     const customer = await prisma.user.findUnique({
       where: { id: customerId },
@@ -130,7 +123,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Some products not found' }, { status: 404 });
     }
 
-    let totalAmount = 0;
+    let subtotal = 0;
     const orderItems = items.map((item: any) => {
       const product = products.find((p: any) => p.id === item.productId);
 
@@ -138,8 +131,8 @@ export async function POST(request: NextRequest) {
         throw new Error(`Product "${product?.name || item.productId}" has insufficient stock`);
       }
 
-      const subtotal = Number(product!.price) * item.quantity;
-      totalAmount += subtotal;
+      const itemSubtotal = Number(product!.price) * item.quantity;
+      subtotal += itemSubtotal;
 
       return {
         productId: item.productId,
@@ -147,15 +140,24 @@ export async function POST(request: NextRequest) {
         productName: product!.name,
         price: product!.price,
         quantity: item.quantity,
-        subtotal,
+        subtotal: itemSubtotal,
         image: product!.images[0] || null,
       };
     });
 
     const shippingFee = 30000;
-    totalAmount += shippingFee;
+    
+    // QUAN TRỌNG: Tính totalAmount sau khi trừ coinDiscount
+    const totalAmount = Math.max(0, subtotal + shippingFee - coinDiscount);
 
-    // 4. THỰC HIỆN TRANSACTION (Đảm bảo tạo đơn hàng và cập nhật tồn kho thành công đồng thời)
+    console.log('💰 Order calculation:', {
+      subtotal,
+      shippingFee,
+      coinDiscount,
+      totalAmount
+    });
+
+    // Thực hiện transaction
     const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
@@ -167,13 +169,13 @@ export async function POST(request: NextRequest) {
           shippingName,
           shippingPhone,
           shippingAddress,
-          note,
+          note: note || '',
           items: { create: orderItems },
         },
         include: { items: true },
       });
 
-      // B. Cập nhật tồn kho và số lượng đã bán
+      // Cập nhật tồn kho và số lượng đã bán
       const updatePromises = items.map((item: any) =>
         tx.product.update({
           where: { id: item.productId },
@@ -189,27 +191,37 @@ export async function POST(request: NextRequest) {
       return newOrder;
     });
 
-    // 5. Gửi thông báo DB
+    // Gửi thông báo cho sellers
     const notifiedSellers = new Set<number>();
     for (const item of order.items) {
       if (!notifiedSellers.has(item.sellerId)) {
         const title = "Đơn hàng mới";
         const message = `Bạn có đơn hàng mới #${order.orderNumber}`;
 
-        // Tạo thông báo DB
         await prisma.notification.create({
-          data: { userId: item.sellerId, type: "order", title: title, message: message, actionUrl: `/orders/${order.id}` },
+          data: { 
+            userId: item.sellerId, 
+            type: "order", 
+            title: title, 
+            message: message, 
+            actionUrl: `/orders/${order.id}` 
+          },
         });
 
         notifiedSellers.add(item.sellerId);
       }
     }
 
-    // 6. Lấy lại đơn hàng với đủ thông tin include cho response
+    // Lấy lại đơn hàng với đủ thông tin
     const finalOrder = await prisma.order.findUnique({
       where: { id: order.id },
       include: {
-        items: { include: { product: true, seller: { select: { id: true, fullName: true } } } },
+        items: { 
+          include: { 
+            product: true, 
+            seller: { select: { id: true, fullName: true } } 
+          } 
+        },
         customer: { select: { id: true, fullName: true, phone: true } },
       }
     });

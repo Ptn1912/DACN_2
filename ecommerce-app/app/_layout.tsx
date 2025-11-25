@@ -1,30 +1,25 @@
-import '../polyfills';
+import '../polyfills';  // ⭐ Import đầu tiên
+import '../global.css';
 import { Stack } from 'expo-router';
-import { useFonts } from 'expo-font';
-import { useEffect } from 'react';
-import * as SplashScreen from 'expo-splash-screen';
-import "../global.css";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthProvider } from '@/hooks/useAuth';
-import { CartProvider } from "@/context/CartContext";
+import React, { useEffect } from 'react';
+import { LogBox } from 'react-native';
+import CartProvider from '@/context/CartContext';
 
-SplashScreen.preventAutoHideAsync();
+// Tắt warnings không cần thiết
+LogBox.ignoreLogs([
+  'Non-serializable values were found in the navigation state',
+  'Require cycle:',
+]);
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    // Thêm custom fonts nếu cần
-    // 'SpaceMono': require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
   useEffect(() => {
-    if (loaded || error) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded, error]);
-
-  if (!loaded && !error) {
-    return null;
-  }
+    // Verify polyfills loaded
+    console.log('🔍 Checking polyfills...');
+    console.log('crypto.getRandomValues:', typeof global.crypto?.getRandomValues);
+    console.log('Buffer:', typeof global.Buffer);
+    console.log('process:', typeof global.process);
+  }, []);
 
   return (
     <AuthProvider>
@@ -53,6 +48,7 @@ export default function RootLayout() {
               headerShown: false,
             }}
           />
+          {/* <Stack.Screen name="coin_transfer" options={{ headerShown: false }} /> */}
         </Stack>
       </CartProvider>
     </AuthProvider>

@@ -1,5 +1,5 @@
 // app/(tabs)/profile.tsx
-import React, { act } from "react";
+import React, { useState, useEffect } from "react";
 import { useOrders } from "../../hooks/useOrders";
 import {
   View,
@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -17,10 +18,46 @@ import { useAuth } from "../../hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import cart from "./cart";
+import web3Service from '@/services/ethersService';
 
 export default function ProfileScreen() {
   const { user, isLoading, logout } = useAuth();
   const { orders, isLoading: ordersLoading, refresh: refreshOrders } = useOrders(user?.id);
+  const [balance, setBalance] = useState<string>('0');
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadBalance();
+    }
+  }, [user?.id]);
+
+  const loadBalance = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setIsLoadingBalance(true);
+      const userBalance = await web3Service.getUserBalance(user.id);
+      if (userBalance) {
+        setBalance(userBalance.balance);
+      }
+    } catch (error: any) {
+      console.error('Load balance error:', error);
+      // Không throw error để không làm crash app
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([
+      loadBalance(),
+      refreshOrders()
+    ]);
+    setIsRefreshing(false);
+  };
 
   const handleLogout = () => {
     Alert.alert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", [
@@ -33,7 +70,7 @@ export default function ProfileScreen() {
     ]);
   };
 
-  if (ordersLoading) {
+  if (ordersLoading && isLoadingBalance) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <ActivityIndicator size="large" color="#3B82F6" />
@@ -108,7 +145,7 @@ export default function ProfileScreen() {
       onPress: (router: any) => router.push("/spaylater"),
     },
     { id: 2, icon: "gift-outline", title: "Voucher", count: "12" },
-    { id: 3, icon: "logo-bitcoin", title: "Điểm", count: "100", onPress: (router: any) => router.push("/(customer-tabs)/coin_transfer"), },
+    { id: 3, icon: "logo-bitcoin", title: "Điểm", count: balance, onPress: (router: any) => router.push("/(customer-tabs)/coin_transfer"), },
   ];
   // Get user initials for avatar
   const getUserInitials = () => {

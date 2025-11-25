@@ -12,9 +12,12 @@ interface CartItem {
 
 interface CartContextType {
   cart: CartItem[];
+  buyNowCart: CartItem[];
   addToCart: (item: CartItem) => void;
+  setBuyNowCart: (items: CartItem[]) => void;
   removeFromCart: (id: number) => void;
   clearCart: () => void;
+  clearBuyNowCart: () => void;
   updateQuantity: (id: number, qty: number) => void;
 }
 
@@ -22,6 +25,7 @@ const CartContext = createContext<CartContextType | null>(null);
 
 export const CartProvider = ({ children }: any) => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [buyNowCart, setBuyNowCartState] = useState<CartItem[]>([]);
   const { user } = useAuth(); 
 
   const getCartKey = () => `cart_${user?.id || "guest"}`;
@@ -55,11 +59,17 @@ export const CartProvider = ({ children }: any) => {
     });
   };
 
+  const setBuyNowCart = (items: CartItem[]) => {
+    setBuyNowCartState(items);
+  };
   const removeFromCart = (id: number) => {
     setCart((prev) => prev.filter((item) => item.id !== id));
   };
 
   const clearCart = () => setCart([]);
+  const clearBuyNowCart = () => {
+    setBuyNowCartState([]);
+  };
 
   const updateQuantity = (id: number, qty: number) => {
     setCart((prev) =>
@@ -71,12 +81,20 @@ export const CartProvider = ({ children }: any) => {
 
   return (
     <CartContext.Provider
-      value={{ cart, addToCart, removeFromCart, clearCart, updateQuantity }}
+      value={{
+        cart,
+        buyNowCart,
+        addToCart,
+        setBuyNowCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        clearBuyNowCart,
+      }}
     >
       {children}
     </CartContext.Provider>
   );
 };
-
 export const useCart = () => useContext(CartContext)!;
 export default CartProvider;

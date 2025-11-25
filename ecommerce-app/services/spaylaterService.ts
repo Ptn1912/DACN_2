@@ -54,16 +54,10 @@ class SPayLaterService {
       console.log('🌐 Fetching customer info for user:', userId);
       const response = await api.get(`/spaylater?userId=${userId}`);
       
-      console.log('📡 Raw API Response:', JSON.stringify(response.data, null, 2));
-      
       if (!response.data.registered) {
         console.log('❌ User not registered');
         return null;
       }
-      
-      // Log chi tiết customer và transactions
-      console.log('📦 Customer data:', response.data.customer);
-      console.log('📦 Transactions in customer:', response.data.customer?.transactions);
       
       // Parse data đúng cấu trúc
       const result: SPayLaterInfo = {

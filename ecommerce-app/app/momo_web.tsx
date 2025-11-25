@@ -135,7 +135,6 @@ export default function MoMoPaymentScreen() {
   const handleTestPaymentSuccess = async () => {
   console.log('🔵 Test button pressed');
   console.log('📦 orderNumber:', orderNumber);
-  console.log('📄 orderData:', orderData);
   
   if (!orderNumber) {
     Alert.alert('Lỗi', 'Không tìm thấy mã đơn hàng');

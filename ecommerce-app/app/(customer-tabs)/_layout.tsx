@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { CartProvider } from '@/context/CartContext';
+import { View, Text } from 'react-native';
+import { useCart } from '@/context/CartContext';
 
 export default function TabLayout() {
   return (
@@ -37,6 +38,7 @@ export default function TabLayout() {
         name="product-customer/[id]"
         options={{ href: null }}
       />
+      
       <Tabs.Screen
         name="mall"
         options={{
@@ -51,9 +53,46 @@ export default function TabLayout() {
         name="cart"
         options={{
           title: 'Giỏ hàng',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cart" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => {
+            // Tạo component riêng để sử dụng useCart hook
+            const CartIcon = () => {
+              const { cart } = useCart();
+              
+              return (
+                <View style={{ position: 'relative' }}>
+                  <Ionicons name="cart" size={size} color={color} />
+                  {cart.length > 0 && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: -6,
+                        right: -10,
+                        backgroundColor: '#EF4444',
+                        borderRadius: 10,
+                        minWidth: 18,
+                        height: 18,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: '#fff',
+                          fontSize: 10,
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {cart.length > 99 ? '99+' : cart.length}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            };
+            
+            return <CartIcon />;
+          },
         }}
       />
 
@@ -83,31 +122,24 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-          name="all_orders"
-          options={{ 
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="search"
-          options={{ 
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="seller-shop/[id]"
-          options={{ 
-            href: null,
-          }}
-        />
-        <Tabs.Screen
-          name="coin_transfer"
-          options={{ 
-            href: null,
-          }}
-        />
+        name="all_orders"
+        options={{ href: null }}
+      />
+      
+      <Tabs.Screen
+        name="search"
+        options={{ href: null }}
+      />
+      
+      <Tabs.Screen
+        name="seller-shop/[id]"
+        options={{ href: null }}
+      />
+      
+      <Tabs.Screen
+        name="coin_transfer"
+        options={{ href: null }}
+      />
     </Tabs>
-
-    
   );
 }

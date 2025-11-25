@@ -162,6 +162,7 @@ export const orderService = {
     paymentMethod: PaymentMethod;
     note?: string;
     advancePaymentAmount?: number;
+    coinDiscount?: number; // Thêm coin discount
   }): Promise<OrderResponse> {
     try {
       const response = await api.post('/orders', data);
@@ -289,8 +290,6 @@ export const orderService = {
     paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log(`📝 Updating payment status for order ${orderNumber} to ${paymentStatus}`);
-      
       const response = await api.patch(`/orders/${orderNumber}`, {
         paymentStatus,
       });
