@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Category, Product, productService } from "@/services/productService";
 import { LinearGradient } from "expo-linear-gradient";
+import { aiService } from "@/services/aiService";
 
 export default function SellerDashboardScreen() {
   const { user, isLoading: authLoading } = useAuth();
@@ -21,6 +22,23 @@ export default function SellerDashboardScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const fetchAiRecommendation = async () => {
+    setIsAiLoading(true);
+
+    const result = await aiService.getBusinessRecommendation(user!.id);
+
+    if (result.success) {
+      setAiRecommendation(result.data);
+    } else {
+      setAiRecommendation(result.error);
+    }
+
+    setIsAiLoading(false);
+  };
+
 
   useEffect(() => {
     fetchData();
@@ -278,6 +296,44 @@ export default function SellerDashboardScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        <View className="px-4 mt-6">
+          <Text className="text-lg font-bold text-gray-900 mb-3">
+            Đề xuất thông minh từ AI
+          </Text>
+          <View className="bg-white rounded-2xl p-4 border border-blue-100 shadow-sm">
+
+            {/* Nút gọi AI */}
+            <TouchableOpacity
+              onPress={fetchAiRecommendation}
+              disabled={isAiLoading}
+              className="bg-blue-600 rounded-xl py-3 flex-row items-center justify-center"
+            >
+              {isAiLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles-outline" size={20} color="#FFFFFF" />
+                  <Text className="text-white font-bold ml-2">
+                    Nhận 3 Hướng Cải Tiến Bán Hàng
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Hiển thị kết quả đề xuất */}
+            {aiRecommendation && (
+              <View className="mt-4 pt-4 border-t border-gray-100">
+                <Text className="text-sm font-semibold text-gray-700 mb-2">
+                  ✨ Đề Xuất:
+                </Text>
+                <Text className="text-gray-600 text-sm">
+                  {aiRecommendation}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
