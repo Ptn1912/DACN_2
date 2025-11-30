@@ -81,6 +81,19 @@ export default function SellerTabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="chatAI"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="edit-product"
+        options={{
+          href: null,
+        }}
+      />
+      
     </Tabs>
   );
 }

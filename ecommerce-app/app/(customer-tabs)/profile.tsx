@@ -1,5 +1,5 @@
 // app/(tabs)/profile.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useOrders } from "../../hooks/useOrders";
 import {
   View,
@@ -13,19 +13,24 @@ import {
   RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import cart from "./cart";
-import web3Service from '@/services/ethersService';
+import web3Service from "@/services/ethersService";
 
 export default function ProfileScreen() {
-  const { user, isLoading, logout } = useAuth();
-  const { orders, isLoading: ordersLoading, refresh: refreshOrders } = useOrders(user?.id);
-  const [balance, setBalance] = useState<string>('0');
+  const { user, isLoading, logout, refreshUser } = useAuth();
+  const {
+    orders,
+    isLoading: ordersLoading,
+    refresh: refreshOrders,
+  } = useOrders(user?.id);
+  const [balance, setBalance] = useState<string>("0");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
 
   useEffect(() => {
     if (user?.id) {
@@ -35,7 +40,7 @@ export default function ProfileScreen() {
 
   const loadBalance = async () => {
     if (!user?.id) return;
-    
+
     try {
       setIsLoadingBalance(true);
       const userBalance = await web3Service.getUserBalance(user.id);
@@ -43,7 +48,7 @@ export default function ProfileScreen() {
         setBalance(userBalance.balance);
       }
     } catch (error: any) {
-      console.error('Load balance error:', error);
+      console.error("Load balance error:", error);
       // Không throw error để không làm crash app
     } finally {
       setIsLoadingBalance(false);
@@ -52,10 +57,7 @@ export default function ProfileScreen() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([
-      loadBalance(),
-      refreshOrders()
-    ]);
+    await Promise.all([loadBalance(), refreshOrders()]);
     setIsRefreshing(false);
   };
 
@@ -80,10 +82,10 @@ export default function ProfileScreen() {
   }
 
   const orderCounts = {
-  confirmed: orders.filter(o => o.status === "confirmed").length,
-  shipping: orders.filter(o => o.status === "shipping").length,
-  delivered: orders.filter(o => o.status === "delivered").length,
-};
+    confirmed: orders.filter((o) => o.status === "confirmed").length,
+    shipping: orders.filter((o) => o.status === "shipping").length,
+    delivered: orders.filter((o) => o.status === "delivered").length,
+  };
 
   const menuItems = [
     {
@@ -92,7 +94,7 @@ export default function ProfileScreen() {
       title: "Đơn hàng của tôi",
       subtitle: "Xem lịch sử đơn hàng",
       color: "#3B82F6",
-      route: "/(customer-tabs)/all_orders"
+      route: "/(customer-tabs)/all_orders",
     },
     {
       id: 2,
@@ -123,7 +125,7 @@ export default function ProfileScreen() {
       icon: "notifications-outline",
       title: "Thông báo",
       subtitle: "Cài đặt thông báo",
-      color: "#8B5CF6", 
+      color: "#8B5CF6",
       route: "/(customer-tabs)/notifications",
     },
     {
@@ -132,7 +134,7 @@ export default function ProfileScreen() {
       title: "Cài đặt",
       subtitle: "Cài đặt tài khoản",
       color: "#6B7280",
-      route: undefined,
+      route: "/(customer-tabs)/settings",
     },
   ];
 
@@ -145,7 +147,13 @@ export default function ProfileScreen() {
       onPress: (router: any) => router.push("/spaylater"),
     },
     { id: 2, icon: "gift-outline", title: "Voucher", count: "12" },
-    { id: 3, icon: "logo-bitcoin", title: "Điểm", count: balance, onPress: (router: any) => router.push("/(customer-tabs)/coin_transfer"), },
+    {
+      id: 3,
+      icon: "logo-bitcoin",
+      title: "Điểm",
+      count: balance,
+      onPress: (router: any) => router.push("/(customer-tabs)/coin_transfer"),
+    },
   ];
   // Get user initials for avatar
   const getUserInitials = () => {
@@ -180,7 +188,9 @@ export default function ProfileScreen() {
             >
               <Ionicons name="cart-outline" size={26} color="#1F2937" />
               <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
-                <Text className="text-white text-xs font-bold">{cart.length}</Text>
+                <Text className="text-white text-xs font-bold">
+                  {cart.length}
+                </Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity className="relative">
@@ -211,9 +221,17 @@ export default function ProfileScreen() {
           }}
         >
           <View className="flex-row items-center">
-            <View className="w-16 h-16 bg-white rounded-full items-center justify-center">
-              <Ionicons name="person" size={32} color="#2563EB" />
-            </View>
+            {/* Avatar with Image Support */}
+            {user?.avatar ? (
+              <Image
+                source={{ uri: user.avatar }}
+                className="w-16 h-16 rounded-full"
+              />
+            ) : (
+              <View className="w-16 h-16 bg-white rounded-full items-center justify-center">
+                <Ionicons name="person" size={32} color="#2563EB" />
+              </View>
+            )}
             <View className="flex-1 ml-4">
               <Text className="text-white font-bold text-xl">
                 {user?.fullName || "Người dùng"}
@@ -225,7 +243,7 @@ export default function ProfileScreen() {
                 {user?.phone || "Chưa có số điện thoại"}
               </Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/(customer-tabs)/settings")}>
               <Ionicons name="create-outline" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -256,7 +274,9 @@ export default function ProfileScreen() {
             <Text className="text-gray-900 font-bold text-base">
               Đơn hàng của tôi
             </Text>
-            <TouchableOpacity onPress={() => router.push("/(customer-tabs)/all_orders")}>
+            <TouchableOpacity
+              onPress={() => router.push("/(customer-tabs)/all_orders")}
+            >
               <Text className="text-blue-600 font-medium text-sm">
                 Xem tất cả
               </Text>
@@ -265,26 +285,48 @@ export default function ProfileScreen() {
 
           <View className="flex-row justify-between">
             {[
-              { icon: "wallet", label: "Chờ thanh toán", statusKey: "confirmed" },
+              {
+                icon: "wallet",
+                label: "Chờ thanh toán",
+                statusKey: "confirmed",
+              },
               { icon: "cube", label: "Đang giao", statusKey: "shipping" },
-              { icon: "checkmark-circle", label: "Hoàn thành", statusKey: "delivered" },
-              { icon: "return-down-back", label: "Trả hàng", statusKey: "returned" },
+              {
+                icon: "checkmark-circle",
+                label: "Hoàn thành",
+                statusKey: "delivered",
+              },
+              {
+                icon: "return-down-back",
+                label: "Trả hàng",
+                statusKey: "returned",
+              },
             ].map((status, index) => {
-              const count = orderCounts[status.statusKey as keyof typeof orderCounts] || orders.length;
+              const count =
+                orderCounts[status.statusKey as keyof typeof orderCounts] ||
+                orders.length;
 
               return (
                 <TouchableOpacity
                   key={index}
                   className="items-center flex-1"
                   onPress={() =>
-                    router.push(`/(customer-tabs)/all_orders?status=${status.statusKey}`)
+                    router.push(
+                      `/(customer-tabs)/all_orders?status=${status.statusKey}`
+                    )
                   }
                 >
                   <View className="relative">
-                    <Ionicons name={status.icon as any} size={28} color="#2563EB" />
+                    <Ionicons
+                      name={status.icon as any}
+                      size={28}
+                      color="#2563EB"
+                    />
                     {count > 0 && (
                       <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
-                        <Text className="text-white text-xs font-bold">{count}</Text>
+                        <Text className="text-white text-xs font-bold">
+                          {count}
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -296,7 +338,6 @@ export default function ProfileScreen() {
             })}
           </View>
         </View>
-
 
         {/* Menu Items */}
         <View className="mx-4 mt-4">

@@ -7,6 +7,7 @@ export interface User {
   email: string;
   phone?: string;
   userType: 'customer' | 'seller';
+  avatar?: string;
 }
 
 export interface SearchUsersResponse {
@@ -21,7 +22,20 @@ export interface GetUserResponse {
   user?: User;
   error?: string;
 }
+export interface UpdateProfileData {
+  fullName: string;
+  phone?: string;
+  avatar?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
 
+export interface UploadResponse {
+  success: boolean;
+  url?: string;
+  publicId?: string;
+  error?: string;
+}
 export const userService = {
   /**
    * Search users by name, email, or ID
@@ -77,5 +91,76 @@ export const userService = {
    */
   async getAllUsers(limit: number = 100): Promise<SearchUsersResponse> {
     return this.searchUsers('', undefined);
-  }
+  },
+  async getProfile() {
+    try {
+      const response = await api.get('/profile');
+      return {
+        success: true,
+        data: response.data.user,
+      };
+    } catch (error: any) {
+      console.error('Get profile error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Không thể tải thông tin',
+      };
+    }
+  },
+
+  async updateProfile(data: UpdateProfileData) {
+    try {
+      const response = await api.put('/profile', data);
+      return {
+        success: true,
+        data: response.data.user,
+        message: response.data.message,
+      };
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Cập nhật thất bại',
+      };
+    }
+  },
+
+  async uploadAvatar(file: File): Promise<UploadResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'avatars');
+
+      const response = await api.post('/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return {
+        success: true,
+        url: response.data.url,
+        publicId: response.data.publicId,
+      };
+    } catch (error: any) {
+      console.error('Upload avatar error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Upload thất bại',
+      };
+    }
+  },
+
+  async deleteImage(publicId: string) {
+    try {
+      await api.delete('/upload', { data: { publicId } });
+      return { success: true };
+    } catch (error: any) {
+      console.error('Delete image error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Xóa ảnh thất bại',
+      };
+    }
+  },
 };

@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Image,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -14,6 +15,7 @@ import { router } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Category, Product, productService } from "@/services/productService";
 import { LinearGradient } from "expo-linear-gradient";
+import { aiService } from "@/services/aiService";
 
 export default function SellerDashboardScreen() {
   const { user, isLoading: authLoading } = useAuth();
@@ -21,6 +23,9 @@ export default function SellerDashboardScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
   const [stats, setStats] = useState({
     totalProducts: 0,
     inStockProducts: 0,
@@ -28,6 +33,20 @@ export default function SellerDashboardScreen() {
     totalSold: 0,
     averageRating: 0,
   });
+
+  const fetchAiRecommendation = async () => {
+    setIsAiLoading(true);
+
+    const result = await aiService.getBusinessRecommendation(user!.id);
+
+    if (result.success) {
+      setAiRecommendation(result.data);
+    } else {
+      setAiRecommendation(result.error);
+    }
+
+    setIsAiLoading(false);
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -282,7 +301,7 @@ export default function SellerDashboardScreen() {
             ))}
           </View>
         </View>
-
+        
         {/* Performance Banner */}
         {stats.averageRating >= 4.0 && (
           <View className="px-4 mt-6 mb-2">
@@ -429,6 +448,32 @@ export default function SellerDashboardScreen() {
           </View>
         )}
       </ScrollView>
+      {/* AI Chatbot Button */}
+      <TouchableOpacity
+        onPress={() => router.push('/(seller-tabs)/chatAI')}
+        style={{
+          position: "absolute",
+          bottom: 30,
+          right: 20,
+          backgroundColor: "#FAFAFA",
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOpacity: 0.25,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 10,
+        }}
+      >
+        <Image
+          source={require('@/assets/chatbot.png')} 
+          style={{ width: 50, height: 50 }}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

@@ -92,7 +92,7 @@ export default function TransactionDetailScreen() {
       <View className="bg-white px-4 py-4 border-b border-gray-200">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={() => router.push('/(customer-tabs)/profile')}>
               <Ionicons name="arrow-back" size={24} color="#000" />
             </TouchableOpacity>
             <Text className="text-xl font-bold ml-4">Chi tiết giao dịch</Text>

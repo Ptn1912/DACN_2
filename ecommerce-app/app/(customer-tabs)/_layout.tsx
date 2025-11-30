@@ -140,6 +140,10 @@ export default function TabLayout() {
         name="coin_transfer"
         options={{ href: null }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }

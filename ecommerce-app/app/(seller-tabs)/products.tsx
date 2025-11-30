@@ -132,7 +132,7 @@ export default function ManageProductsScreen() {
   }
   const handleEditProduct = (product: Product) => {
   router.push({
-    pathname: '/edit-product',
+    pathname: '/(seller-tabs)/edit-product',
     params: { id: product.id }
   });
 };

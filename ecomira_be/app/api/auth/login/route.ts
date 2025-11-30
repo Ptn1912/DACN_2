@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
           email: user.email,
           phone: user.phone,
           userType: user.userType,
+          avatar: user.avatar,
         },
       },
       { status: 200 }

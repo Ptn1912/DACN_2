@@ -84,11 +84,10 @@ export default function ProfileScreen() {
     },
   ];
 
-  const quickActions = [
-    { id: 1, icon: "wallet-outline", title: "Ví", count: "2.5M" },
-    { id: 2, icon: "gift-outline", title: "Voucher", count: "12" },
-    { id: 3, icon: "logo-bitcoin", title: "Coin", count: "850" },
-  ];
+  // const quickActions = [
+  //   { id: 1, icon: "wallet-outline", title: "Ví", count: "2.5M" },
+  //   { id: 2, icon: "gift-outline", title: "Voucher", count: "12" },
+  // ];
   const getUserInitials = () => {
     if (!user?.fullName) return "U";
     const names = user.fullName.split(" ");
@@ -150,23 +149,6 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Quick Actions */}
-          <View className="flex-row justify-between mt-6">
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                className="bg-white/20 rounded-xl p-3 items-center flex-1 mx-1"
-              >
-                <Ionicons name={action.icon as any} size={24} color="#fff" />
-                <Text className="text-white font-semibold text-xs mt-2">
-                  {action.title}
-                </Text>
-                <Text className="text-white/90 text-xs mt-1">
-                  {action.count}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </LinearGradient>
 
         {/* Order Status */}

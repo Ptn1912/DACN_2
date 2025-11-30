@@ -22,15 +22,22 @@ export interface User {
   email: string;
   phone: string;
   userType: 'customer' | 'seller';
+  avatar?: string;
 }
-
 
 export const authService = {
   async register(data: RegisterData) {
     try {
       const response = await api.post('/auth/register', data);
-      // Tạo wallet cho user mới
-      await this.ensureUserHasWallet(response.data.user.id);
+      
+      // CHỈ tạo wallet cho CUSTOMER, KHÔNG tạo cho SELLER
+      if (data.userType === 'customer') {
+        console.log('📝 Creating blockchain wallet for customer...');
+        await this.ensureUserHasWallet(response.data.user.id);
+      } else {
+        console.log('ℹ️ Seller registered - skipping blockchain wallet creation');
+      }
+      
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -39,22 +46,31 @@ export const authService = {
       };
     }
   },
+
   async ensureUserHasWallet(userId: number) {
     try {
       const balance = await web3Service.getUserBalance(userId);
       if (!balance) {
         // User chưa có wallet, tạo mới
-        console.log('Creating wallet for user', userId);
+        console.log('🔨 Creating wallet for user', userId);
         const result = await web3Service.registerUserWallet(userId);
         
         if (result.success) {
           // Mint 100 coins ban đầu
-          await web3Service.mintCoinsToUser(userId, 100);
-          console.log('Wallet created and 100 coins minted');
+          const mintResult = await web3Service.mintCoinsToUser(userId, 100);
+          if (mintResult.success) {
+            console.log('✅ Wallet created and 100 coins minted');
+          } else {
+            console.log('⚠️ Wallet created but failed to mint coins');
+          }
+        } else {
+          console.error('❌ Failed to create wallet:', result.error);
         }
+      } else {
+        console.log('ℹ️ User already has wallet');
       }
     } catch (error) {
-      console.error('Ensure wallet error:', error);
+      console.error('❌ Ensure wallet error:', error);
     }
   },
 
@@ -65,8 +81,14 @@ export const authService = {
       // Save token and user data
       await AsyncStorage.setItem('authToken', response.data.token);
       await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
-      // Đảm bảo user có wallet
-      await this.ensureUserHasWallet(response.data.user.id);
+      
+      // CHỈ đảm bảo customer có wallet, KHÔNG tạo cho seller
+      if (data.userType === 'customer') {
+        console.log('🔍 Checking customer wallet...');
+        await this.ensureUserHasWallet(response.data.user.id);
+      } else {
+        console.log('ℹ️ Seller login - skipping wallet check');
+      }
       
       return { success: true, data: response.data };
     } catch (error: any) {
