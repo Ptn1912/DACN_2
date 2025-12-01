@@ -1,115 +1,168 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+// GET /api/chat/conversations - Get all conversations for a user
+// POST /api/chat/conversations - Create new conversation
 
-export async function GET(req: NextRequest) {
+import { type NextRequest, NextResponse } from "next/server"
+import prisma from "@/lib/prisma"
+
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
 
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return NextResponse.json({ error: "userId is required" }, { status: 400 })
     }
+
+    const userIdNum = Number.parseInt(userId)
 
     const conversations = await prisma.conversation.findMany({
       where: {
-        OR: [
-          { user1Id: parseInt(userId) },
-          { user2Id: parseInt(userId) }
-        ]
+        OR: [{ user1Id: userIdNum }, { user2Id: userIdNum }],
       },
       include: {
-        user1: true,
-        user2: true,
-        messages: {
-          orderBy: {
-            createdAt: 'desc'
+        user1: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            userType: true,
           },
-          take: 1
-        }
+        },
+        user2: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            userType: true,
+          },
+        },
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: {
-        updatedAt: 'desc'
-      }
-    });
+        lastMessageTime: "desc",
+      },
+    })
 
-    // Format response
-    const formattedConversations = conversations.map(conv => {
-      const participant = conv.user1Id === parseInt(userId) ? conv.user2 : conv.user1;
-      const lastMessage = conv.messages[0];
+    // Transform to include participant info based on current user
+    const transformedConversations = conversations.map((conv) => {
+      const isUser1 = conv.user1Id === userIdNum
+      const participant = isUser1 ? conv.user2 : conv.user1
+      const unreadCount = isUser1 ? conv.unreadCountUser1 : conv.unreadCountUser2
 
       return {
         id: conv.id.toString(),
         participantId: participant.id.toString(),
         participantName: participant.fullName,
-        participantType: participant.userType,
         participantAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.fullName)}&background=random`,
-        lastMessage: lastMessage?.content || '',
-        lastMessageTime: lastMessage?.createdAt || conv.createdAt,
-        unreadCount: conv.user1Id === parseInt(userId) ? conv.unreadCountUser1 : conv.unreadCountUser2,
-        isOnline: Math.random() > 0.5, // Trong thực tế, bạn có thể dùng WebSocket để tracking online status
-      };
-    });
+        participantType: participant.userType,
+        lastMessage: conv.lastMessage || "",
+        lastMessageTime: conv.lastMessageTime || conv.createdAt,
+        unreadCount,
+        isOnline: false, // Will be updated via socket
+      }
+    })
 
-    return NextResponse.json(formattedConversations);
+    return NextResponse.json(transformedConversations)
   } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Error fetching conversations:", error)
+    return NextResponse.json({ error: "Failed to fetch conversations" }, { status: 500 })
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { user1Id, user2Id, initialMessage, productId } = await req.json();
+    const body = await request.json()
+    const { user1Id, user2Id, initialMessage, productId } = body
 
     if (!user1Id || !user2Id) {
-      return NextResponse.json({ error: 'User IDs are required' }, { status: 400 });
+      return NextResponse.json({ error: "user1Id and user2Id are required" }, { status: 400 })
     }
 
-    // Kiểm tra conversation đã tồn tại chưa
-    let conversation = await prisma.conversation.findFirst({
+    const user1IdNum = Number.parseInt(user1Id)
+    const user2IdNum = Number.parseInt(user2Id)
+
+    // Ensure user1Id < user2Id for consistency
+    const [smallerId, largerId] = user1IdNum < user2IdNum ? [user1IdNum, user2IdNum] : [user2IdNum, user1IdNum]
+
+    // Check if conversation already exists
+    let conversation = await prisma.conversation.findUnique({
       where: {
-        OR: [
-          { user1Id: parseInt(user1Id), user2Id: parseInt(user2Id) },
-          { user1Id: parseInt(user2Id), user2Id: parseInt(user1Id) }
-        ]
+        user1Id_user2Id: {
+          user1Id: smallerId,
+          user2Id: largerId,
+        },
       },
       include: {
-        user1: true,
-        user2: true
-      }
-    });
+        user1: {
+          select: { id: true, fullName: true, userType: true },
+        },
+        user2: {
+          select: { id: true, fullName: true, userType: true },
+        },
+      },
+    })
 
     if (!conversation) {
+      // Create new conversation
       conversation = await prisma.conversation.create({
         data: {
-          user1Id: parseInt(user1Id),
-          user2Id: parseInt(user2Id),
-          lastMessage: initialMessage || '',
-          lastMessageTime: new Date(),
+          user1Id: smallerId,
+          user2Id: largerId,
+          lastMessage: initialMessage || null,
+          lastMessageTime: initialMessage ? new Date() : null,
         },
         include: {
-          user1: true,
-          user2: true
-        }
-      });
+          user1: {
+            select: { id: true, fullName: true, userType: true },
+          },
+          user2: {
+            select: { id: true, fullName: true, userType: true },
+          },
+        },
+      })
+
+      // If there's an initial message, create it
+      if (initialMessage) {
+        await prisma.message.create({
+          data: {
+            conversationId: conversation.id,
+            senderId: user1IdNum,
+            receiverId: user2IdNum,
+            content: initialMessage,
+            messageType: productId ? "product" : "text",
+            productId: productId ? Number.parseInt(productId) : null,
+          },
+        })
+
+        // Update unread count for receiver
+        const isReceiverUser1 = user2IdNum === smallerId
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: isReceiverUser1 ? { unreadCountUser1: { increment: 1 } } : { unreadCountUser2: { increment: 1 } },
+        })
+      }
     }
 
-    // Format response
-    const participant = conversation.user1Id === parseInt(user1Id) ? conversation.user2 : conversation.user1;
-    
-    const formattedConversation = {
+    // Determine participant based on who initiated
+    const isUser1 = user1IdNum === smallerId
+    const participant = isUser1 ? conversation.user2 : conversation.user1
+
+    return NextResponse.json({
       id: conversation.id.toString(),
       participantId: participant.id.toString(),
       participantName: participant.fullName,
-      participantType: participant.userType,
       participantAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.fullName)}&background=random`,
-      lastMessage: initialMessage || '',
-      lastMessageTime: new Date(),
+      participantType: participant.userType,
+      lastMessage: conversation.lastMessage || "",
+      lastMessageTime: conversation.lastMessageTime || conversation.createdAt,
       unreadCount: 0,
-      isOnline: Math.random() > 0.5,
-    };
-
-    return NextResponse.json(formattedConversation);
+      isOnline: false,
+    })
   } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Error creating conversation:", error)
+    return NextResponse.json({ error: "Failed to create conversation" }, { status: 500 })
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-// Customer Chat Screen with Real-time Socket.IO
+// Seller Chat Screen with Real-time Socket.IO
 
 import { useState, useRef, useEffect } from "react"
 import {
@@ -20,7 +20,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import { useChat } from "@/hooks/useChat"
 import { useAuth } from "@/hooks/useAuth"
 
-export default function ChatScreen() {
+export default function SellerChatScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>()
   const { user } = useAuth()
   const {
@@ -47,16 +47,13 @@ export default function ChatScreen() {
     initializeConversation()
   }, [conversationId])
 
-    const initializeConversation = async () => {
+  const initializeConversation = async () => {
     if (conversationId) {
       try {
         await loadConversations()
-        // ✅ PHẢI AWAIT - vì getConversationById trả về Promise
         const conversation = await getConversationById(conversationId)
         if (conversation) {
           selectConversation(conversation)
-        } else {
-          console.warn(`[Chat] Conversation ${conversationId} not found`)
         }
       } catch (error) {
         console.error("Error initializing conversation:", error)
@@ -69,11 +66,6 @@ export default function ChatScreen() {
   }
 
   useEffect(() => {
-    initializeConversation()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, isConnected])
-
-  useEffect(() => {
     if (scrollViewRef.current && messages.length > 0) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true })
@@ -84,11 +76,9 @@ export default function ChatScreen() {
   const handleTextChange = (text: string) => {
     setNewMessage(text)
 
-    // Handle typing indicator
     if (text.length > 0) {
       startTyping()
 
-      // Reset typing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current)
       }
@@ -127,7 +117,6 @@ export default function ChatScreen() {
     return senderId === user?.id?.toString()
   }
 
-  // Get typing status for current conversation
   const currentTypingUser = currentConversation ? typingUsers.get(currentConversation.id) : null
 
   if (initializing) {
@@ -174,12 +163,8 @@ export default function ChatScreen() {
           </View>
         </View>
 
-        <TouchableOpacity className="ml-2">
-          <Ionicons name="call-outline" size={22} color="#3B82F6" />
-        </TouchableOpacity>
-
         <TouchableOpacity className="ml-4">
-          <Ionicons name="information-circle-outline" size={22} color="#3B82F6" />
+          <Ionicons name="ellipsis-vertical" size={22} color="#6B7280" />
         </TouchableOpacity>
       </View>
 
@@ -204,7 +189,7 @@ export default function ChatScreen() {
             <View className="flex-1 items-center justify-center py-8">
               <Ionicons name="chatbubble-outline" size={48} color="#9CA3AF" />
               <Text className="text-gray-500 mt-4">Chưa có tin nhắn nào</Text>
-              <Text className="text-gray-400 text-center mt-2">Hãy bắt đầu cuộc trò chuyện</Text>
+              <Text className="text-gray-400 text-center mt-2">Hãy bắt đầu trả lời khách hàng</Text>
             </View>
           ) : (
             <>
@@ -241,29 +226,34 @@ export default function ChatScreen() {
                 )
               })}
 
-              {/* Typing indicator */}
               {currentTypingUser && (
                 <View className="items-start my-1">
                   <View className="bg-gray-200 rounded-2xl rounded-bl-none px-4 py-3">
                     <View className="flex-row items-center">
-                      <View className="flex-row space-x-1">
-                        <View className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
-                        <View
-                          className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.1s" }}
-                        />
-                        <View
-                          className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.2s" }}
-                        />
-                      </View>
-                      <Text className="text-gray-500 text-xs ml-2">đang nhập...</Text>
+                      <Text className="text-gray-500 text-xs">đang nhập...</Text>
                     </View>
                   </View>
                 </View>
               )}
             </>
           )}
+        </ScrollView>
+
+        {/* Quick Replies */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="bg-white border-t border-gray-100 py-2 px-2"
+        >
+          {["Cảm ơn bạn!", "Còn hàng ạ", "Hết hàng rồi ạ", "Ship COD được ạ"].map((reply) => (
+            <TouchableOpacity
+              key={reply}
+              className="bg-gray-100 rounded-full px-3 py-1 mr-2"
+              onPress={() => setNewMessage(reply)}
+            >
+              <Text className="text-gray-700 text-sm">{reply}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
         {/* Input Area */}
@@ -273,7 +263,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity className="mr-3">
-            <Ionicons name="camera-outline" size={26} color="#6B7280" />
+            <Ionicons name="image-outline" size={26} color="#6B7280" />
           </TouchableOpacity>
 
           <View className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 mx-1">

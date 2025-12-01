@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx server.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -11,7 +11,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "dev:all": "tsx server.ts",
+    "socket:dev": "npx nodemon --exec \"npx ts-node --esm\" server.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -20,13 +22,16 @@
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.8.0",
     "ethers": "^6.15.0",
+    "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.554.0",
     "next": "^16.0.2",
     "next-cloudinary": "^6.17.4",
     "pg": "^8.16.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
@@ -36,10 +41,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "concurrently": "^9.2.1",
     "dotenv-cli": "^7.4.4",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
+    "nodemon": "^3.1.11",
     "prisma": "^6.19.0",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   }
 }

@@ -28,9 +28,12 @@ export default function SellerInboxScreen() {
   };
 
   const handleSelectConversation = (conversation: any) => {
-    selectConversation(conversation);
-    router.push('/chat');
-  };
+  selectConversation(conversation);
+  router.push({
+    pathname: '/chat',
+    params: { conversationId: conversation.id }
+  });
+};
 
   const formatTime = (date: Date) => {
     const now = new Date();

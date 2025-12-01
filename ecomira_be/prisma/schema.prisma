@@ -262,6 +262,7 @@ model Message {
 enum UserType {
   customer
   seller
+  admin
 }
 
 enum OrderStatus {
