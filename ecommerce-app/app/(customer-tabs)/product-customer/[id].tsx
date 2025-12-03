@@ -401,7 +401,7 @@ export default function ProductDetailCusScreen() {
               <TouchableOpacity
                 onPress={() => router.push({
                 pathname: '/(customer-tabs)/seller-shop/[id]',
-                params: { sellerId: product.seller.id.toString() }
+                params: { id: product.seller.id.toString() }
               })}
                 className="bg-white rounded-2xl px-4 py-2 border border-gray-200"
               >

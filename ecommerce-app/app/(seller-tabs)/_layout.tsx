@@ -82,6 +82,7 @@ export default function SellerTabLayout() {
         }}
       />
       <Tabs.Screen
+<<<<<<< HEAD
         name="chatAI"
         options={{
           href: null,
@@ -94,6 +95,21 @@ export default function SellerTabLayout() {
         }}
       />
       
+=======
+  name="inbox"
+  options={{
+    title: 'Tin nhắn',
+    tabBarIcon: ({ color, size }) => (
+      <Ionicons name="chatbubble-ellipses" size={size} color={color} />
+    ),
+  }}
+/>
+
+<Tabs.Screen
+  name="chat"
+  options={{ href: null }}
+/>
+>>>>>>> Feature/chat
     </Tabs>
   );
 }
