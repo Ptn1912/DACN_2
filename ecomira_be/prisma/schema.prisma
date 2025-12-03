@@ -19,7 +19,6 @@ model User {
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
   
-  // Existing relations
   sellerItems       OrderItem[]        @relation("SellerOrderItems")
   orders            Order[]            @relation("CustomerOrders")
   products          Product[]          @relation("UserProducts")
@@ -27,7 +26,6 @@ model User {
   notifications Notification[]
   spaylaterCustomer SPayLaterCustomer?
   
-  // New chat relations
   conversationsAsUser1 Conversation[] @relation("ConversationUser1")
   conversationsAsUser2 Conversation[] @relation("ConversationUser2")
   sentMessages         Message[]      @relation("MessageSender")
@@ -66,7 +64,6 @@ model Product {
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
   
-  // Existing relations
   orderItems  OrderItem[]
   category    Category    @relation(fields: [categoryId], references: [id])
   seller      User        @relation("UserProducts", fields: [sellerId], references: [id])
@@ -133,7 +130,6 @@ model OrderItem {
   image       String?
   createdAt   DateTime @default(now()) @map("created_at")
   
-  // Existing relations
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id])
   seller      User     @relation("SellerOrderItems", fields: [sellerId], references: [id])
@@ -159,7 +155,6 @@ model SPayLaterCustomer {
   createdAt       DateTime               @default(now()) @map("created_at")
   updatedAt       DateTime               @updatedAt @map("updated_at")
   
-  // Existing relations
   user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments        SPayLaterPayment[]
   transactions    SPayLaterTransaction[]
@@ -182,7 +177,6 @@ model SPayLaterTransaction {
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
   
-  // Existing relations
   payments           SPayLaterPayment[]
   customer           SPayLaterCustomer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   order              Order?             @relation(fields: [orderId], references: [id])
@@ -205,7 +199,6 @@ model SPayLaterPayment {
   metadata           Json?
   createdAt          DateTime             @default(now()) @map("created_at")
   
-  // Existing relations
   customer           SPayLaterCustomer    @relation(fields: [customerId], references: [id])
   transaction        SPayLaterTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
@@ -226,7 +219,6 @@ model Conversation {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  // Relations
   user1              User     @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
   user2              User     @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
   messages           Message[]
@@ -248,7 +240,6 @@ model Message {
   isRead          Boolean  @default(false) @map("is_read")
   createdAt       DateTime @default(now()) @map("created_at")
 
-  // Relations
   conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender          User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver        User         @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)

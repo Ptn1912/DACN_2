@@ -1,8 +1,22 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { View, Text } from "react-native";
+import { View, Text, DeviceEventEmitter} from "react-native";
+import { useEffect, useState } from "react";
 
 export default function SellerTabLayout() {
+  const [productCount, setProductCount] = useState(0);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      "seller-products-count",
+      (count) => {
+        setProductCount(count);
+      }
+    );
+
+    return () => sub.remove();
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
@@ -55,7 +69,7 @@ export default function SellerTabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube" size={size} color={color} />
           ),
-          tabBarBadge: 24,
+          tabBarBadge: productCount > 0 ? productCount : undefined,
         }}
       />
 
@@ -67,20 +81,10 @@ export default function SellerTabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
           ),
-          tabBarBadge: 12,
+          tabBarBadge: 2,
         }}
       />
 
-      {/* Profile/Account */}
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Tài khoản",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
-        }}
-      />
       <Tabs.Screen
         name="chatAI"
         options={{
@@ -108,7 +112,16 @@ export default function SellerTabLayout() {
           href: null,
         }}
       />
-      
+      {/* Profile/Account */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Tài khoản",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
       
     </Tabs>
   );

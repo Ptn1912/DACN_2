@@ -261,7 +261,7 @@ export default function MoMoPaymentScreen() {
         {processingPayment ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text className="text-white font-bold">🧪 TEST: Giả lập thanh toán thành công</Text>
+          <Text className="text-white font-bold">Thanh toán</Text>
         )}
       </TouchableOpacity>
 

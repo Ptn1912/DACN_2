@@ -17,7 +17,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useAuth } from "../../hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import cart from "./cart";
+import { useCart } from "@/context/CartContext";
 import web3Service from "@/services/ethersService";
 
 export default function ProfileScreen() {
@@ -30,7 +30,7 @@ export default function ProfileScreen() {
   const [balance, setBalance] = useState<string>("0");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
+  const { cart } = useCart();
 
   useEffect(() => {
     if (user?.id) {
@@ -193,7 +193,7 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity className="relative">
+            <TouchableOpacity className="relative" onPress={()=> router.push("/(customer-tabs)/inbox")}>
               <Ionicons
                 name="chatbubble-ellipses-outline"
                 size={26}

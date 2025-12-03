@@ -372,8 +372,6 @@ export default function CheckoutScreen() {
     console.log('MoMo service response:', momoResponse);
 
     if (momoResponse.success && momoResponse.payUrl) {
-      // clearCart();
-      
       // Chuyển đến màn hình WebView
       router.push({
         pathname: '/momo_web',

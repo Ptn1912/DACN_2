@@ -146,10 +146,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // IMPORTANT: Don't check available credit here!
-      // The remaining amount is a LOAN, not an immediate deduction
-      // The advance payment was already deducted in the orders API
-
       // Tính ngày đến hạn (30 ngày sau)
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
@@ -164,9 +160,6 @@ export async function POST(request: NextRequest) {
           status: 'PENDING',
         },
       });
-
-      // DON'T update credit here - it was already updated for advance payment
-      // The 'amount' here represents the loan that needs to be paid back
 
       // Update order payment status
       await prisma.order.update({

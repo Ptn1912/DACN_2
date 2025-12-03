@@ -1,4 +1,4 @@
-import '../polyfills';  // ⭐ Import đầu tiên
+// import '../polyfills';  // ⭐ Import đầu tiên
 import '../global.css';
 import { Stack } from 'expo-router';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -13,13 +13,13 @@ LogBox.ignoreLogs([
 ]);
 
 export default function RootLayout() {
-  useEffect(() => {
-    // Verify polyfills loaded
-    console.log('🔍 Checking polyfills...');
-    console.log('crypto.getRandomValues:', typeof global.crypto?.getRandomValues);
-    console.log('Buffer:', typeof global.Buffer);
-    console.log('process:', typeof global.process);
-  }, []);
+  // useEffect(() => {
+  //   // Verify polyfills loaded
+  //   console.log('🔍 Checking polyfills...');
+  //   console.log('crypto.getRandomValues:', typeof global.crypto?.getRandomValues);
+  //   console.log('Buffer:', typeof global.Buffer);
+  //   console.log('process:', typeof global.process);
+  // }, []);
 
   return (
     <AuthProvider>

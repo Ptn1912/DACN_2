@@ -11,6 +11,7 @@ import {
   TextInput,
   RefreshControl,
   Alert,
+  DeviceEventEmitter 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +28,6 @@ export default function ManageProductsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'lowStock' | 'outOfStock'>('all');
-
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -47,6 +47,7 @@ export default function ManageProductsScreen() {
           (p) => p.seller.id === user?.id
         );
         setProducts(sellerProducts);
+        DeviceEventEmitter.emit("seller-products-count", sellerProducts.length);
       }
     } catch (error) {
       console.error('Fetch products error:', error);

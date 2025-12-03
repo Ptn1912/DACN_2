@@ -236,7 +236,7 @@ export default function SellerChatScreen() {
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
         <Ionicons name="chatbubble-outline" size={64} color="#D1D5DB" />
         <Text className="text-gray-600 mt-4 text-lg">{initError || "Khong tim thay cuoc tro chuyen"}</Text>
-        <TouchableOpacity className="mt-4 bg-blue-500 px-6 py-3 rounded-xl" onPress={() => router.back()}>
+        <TouchableOpacity className="mt-4 bg-blue-500 px-6 py-3 rounded-xl" onPress={() => router.push('/(seller-tabs)/inbox')}>
           <Text className="text-white font-semibold">Quay lai</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -247,7 +247,7 @@ export default function SellerChatScreen() {
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Header */}
       <View className="bg-white px-4 py-3 border-b border-gray-100 flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+        <TouchableOpacity onPress={() => router.push("/(seller-tabs)/inbox")} className="mr-3">
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
 

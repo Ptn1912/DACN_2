@@ -89,15 +89,15 @@ export default function HomeScreen() {
           {/* Search Bar */}
           <View className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-4 py-1">
             <TouchableOpacity
-                        onPress={() => router.push("/search")}
-                        className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-2 py-3"
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="search" size={20} color="#9CA3AF" />
-                        <Text className="flex-1 ml-3 text-gray-500">
-                          Tìm kiếm sản phẩm...
-                        </Text>
-                      </TouchableOpacity>
+              onPress={() => router.push("/search")}
+              className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-2 py-3"
+              activeOpacity={0.7}
+            >
+              <Ionicons name="search" size={20} color="#9CA3AF" />
+              <Text className="flex-1 ml-3 text-gray-500">
+                Tìm kiếm sản phẩm...
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Action Buttons */}
@@ -108,23 +108,25 @@ export default function HomeScreen() {
             >
               <Ionicons name="cart-outline" size={26} color="#1F2937" />
               <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
-                <Text className="text-white text-xs font-bold">{cart.length}</Text>
+                <Text className="text-white text-xs font-bold">
+                  {cart.length}
+                </Text>
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-  className="relative"
-  onPress={() => router.push('../inbox')}
->
-  <Ionicons
-    name="chatbubble-ellipses-outline"
-    size={26}
-    color="#1F2937"
-  />
-  <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
-    <Text className="text-white text-xs font-bold">3</Text>
-  </View>
-</TouchableOpacity>
+            <TouchableOpacity
+              className="relative"
+              onPress={() => router.push("(customer-tabs)/inbox")}
+            >
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={26}
+                color="#1F2937"
+              />
+              <View className="absolute -top-1 -right-1 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
+                <Text className="text-white text-xs font-bold">3</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -171,7 +173,7 @@ export default function HomeScreen() {
 
           {categories.length > 0 ? (
             <View className="flex-row flex-wrap justify-between">
-              {categories.map((category) => (
+              {categories.slice(0, 6).map((category) => (
                 <TouchableOpacity
                   key={category.id}
                   className="items-center mb-4"
