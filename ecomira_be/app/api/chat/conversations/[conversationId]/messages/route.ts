@@ -1,3 +1,4 @@
+// GET/POST /api/chat/conversations/[conversationId]/messages
 
 import { type NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
@@ -59,12 +60,50 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json()
     const { senderId, receiverId, text, productId } = body
 
+    console.log("[v0] POST messages - conversationId:", conversationIdNum)
+    console.log("[v0] POST messages - body:", { senderId, receiverId, text, productId })
+
     if (!senderId || !receiverId || !text) {
+      console.log("[v0] Missing required fields")
       return NextResponse.json({ error: "senderId, receiverId, and text are required" }, { status: 400 })
     }
 
     const senderIdNum = Number.parseInt(senderId)
     const receiverIdNum = Number.parseInt(receiverId)
+
+    let conversation = await prisma.conversation.findUnique({
+      where: { id: conversationIdNum },
+    })
+
+    if (!conversation) {
+      console.log("[v0] Conversation not found, creating new one")
+      // Ensure user1Id < user2Id for consistency
+      const [smallerId, largerId] =
+        senderIdNum < receiverIdNum ? [senderIdNum, receiverIdNum] : [receiverIdNum, senderIdNum]
+
+      // Try to find existing conversation between these users
+      conversation = await prisma.conversation.findUnique({
+        where: {
+          user1Id_user2Id: {
+            user1Id: smallerId,
+            user2Id: largerId,
+          },
+        },
+      })
+
+      if (!conversation) {
+        // Create new conversation
+        conversation = await prisma.conversation.create({
+          data: {
+            user1Id: smallerId,
+            user2Id: largerId,
+          },
+        })
+        console.log("[v0] Created new conversation:", conversation.id)
+      } else {
+        console.log("[v0] Found existing conversation by users:", conversation.id)
+      }
+    }
 
     // Get sender info
     const sender = await prisma.user.findUnique({
@@ -73,13 +112,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     })
 
     if (!sender) {
+      console.log("[v0] Sender not found:", senderIdNum)
       return NextResponse.json({ error: "Sender not found" }, { status: 404 })
     }
 
-    // Create message
+    // Create message using the actual conversation id
     const message = await prisma.message.create({
       data: {
-        conversationId: conversationIdNum,
+        conversationId: conversation.id, // Use actual conversation id
         senderId: senderIdNum,
         receiverId: receiverIdNum,
         content: text,
@@ -93,28 +133,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     })
 
-    // Get conversation to determine which unread count to update
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationIdNum },
+    console.log("[v0] Message created:", message.id)
+
+    // Update conversation with last message and unread count
+    const isReceiverUser1 = receiverIdNum === conversation.user1Id
+
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        lastMessage: text,
+        lastMessageTime: new Date(),
+        ...(isReceiverUser1 ? { unreadCountUser1: { increment: 1 } } : { unreadCountUser2: { increment: 1 } }),
+      },
     })
-
-    if (conversation) {
-      const isReceiverUser1 = receiverIdNum === conversation.user1Id
-
-      // Update conversation with last message and unread count
-      await prisma.conversation.update({
-        where: { id: conversationIdNum },
-        data: {
-          lastMessage: text,
-          lastMessageTime: new Date(),
-          ...(isReceiverUser1 ? { unreadCountUser1: { increment: 1 } } : { unreadCountUser2: { increment: 1 } }),
-        },
-      })
-    }
 
     return NextResponse.json({
       id: message.id.toString(),
-      conversationId: message.conversationId.toString(),
+      conversationId: conversation.id.toString(), // Return actual conversation id
       senderId: message.senderId.toString(),
       receiverId: message.receiverId.toString(),
       senderType: sender.userType,
@@ -129,7 +164,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       timestamp: message.createdAt,
     })
   } catch (error) {
-    console.error("Error sending message:", error)
+    console.error("[v0] Error sending message:", error)
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 })
   }
 }

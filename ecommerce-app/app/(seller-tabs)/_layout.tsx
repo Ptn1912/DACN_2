@@ -41,7 +41,7 @@ export default function SellerTabLayout() {
         }}
       />
 
-       <Tabs.Screen
+      <Tabs.Screen
         name="product/[id]"
         options={{
           href: null,
@@ -70,7 +70,17 @@ export default function SellerTabLayout() {
           tabBarBadge: 12,
         }}
       />
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: "Tin nhắn",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble-ellipses" size={size} color={color} />
+          ),
+        }}
+      />
 
+      <Tabs.Screen name="chat" options={{ href: null }} />
       {/* Profile/Account */}
       <Tabs.Screen
         name="profile"
@@ -81,20 +91,6 @@ export default function SellerTabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-  name="inbox"
-  options={{
-    title: 'Tin nhắn',
-    tabBarIcon: ({ color, size }) => (
-      <Ionicons name="chatbubble-ellipses" size={size} color={color} />
-    ),
-  }}
-/>
-
-<Tabs.Screen
-  name="chat"
-  options={{ href: null }}
-/>
     </Tabs>
   );
 }

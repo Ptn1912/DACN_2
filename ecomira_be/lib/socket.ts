@@ -27,7 +27,7 @@ class SocketService {
       // User joins with their userId
       socket.on("user:join", (data: { userId: number; userType: "customer" | "seller" }) => {
         const { userId, userType } = data
-        const odId = userId // Declare odId variable here
+        const odId = userId
         this.onlineUsers.set(userId, {
           odId,
           socketId: socket.id,
@@ -65,29 +65,36 @@ class SocketService {
           messageType?: string
           productId?: number
           tempId?: string
+          senderType?: string
+          senderName?: string
         }) => {
-          const { conversationId, senderId, receiverId, content, messageType, productId, tempId } = data
+          const { conversationId, receiverId, content, senderId, senderName } = data
 
           // Emit to conversation room (both sender and receiver in the conversation)
           this.io?.to(`conversation:${conversationId}`).emit("message:new", {
             ...data,
-            createdAt: new Date().toISOString(),
+            id: `temp_${Date.now()}`,
+            text: content,
+            timestamp: new Date().toISOString(),
+            isRead: false,
           })
 
-          // Also emit to receiver's personal room in case they're not in the conversation
+          // Also emit notification to receiver's personal room
           this.io?.to(`user:${receiverId}`).emit("message:notification", {
             conversationId,
             senderId,
+            senderName,
             content,
-            createdAt: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
           })
         },
       )
 
       // Handle typing indicator
-      socket.on("typing:start", (data: { conversationId: number; userId: number }) => {
+      socket.on("typing:start", (data: { conversationId: number; userId: number; userName?: string }) => {
         socket.to(`conversation:${data.conversationId}`).emit("typing:start", {
           userId: data.userId,
+          userName: data.userName,
           conversationId: data.conversationId,
         })
       })
@@ -108,9 +115,17 @@ class SocketService {
         })
       })
 
+      // Get online users status
+      socket.on("users:online:get", (userIds: number[]) => {
+        const onlineStatus: Record<number, boolean> = {}
+        userIds.forEach((id) => {
+          onlineStatus[id] = this.onlineUsers.has(id)
+        })
+        socket.emit("users:online:status", onlineStatus)
+      })
+
       // Handle disconnect
       socket.on("disconnect", () => {
-        // Find and remove the disconnected user
         for (const [userId, user] of this.onlineUsers.entries()) {
           if (user.socketId === socket.id) {
             this.onlineUsers.delete(userId)

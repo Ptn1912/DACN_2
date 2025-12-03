@@ -1,21 +1,25 @@
-// Chat Types for React Native App
+// Chat Types for Seller-Customer Communication
+
+export type SenderType = "customer" | "seller"
+export type MessageType = "text" | "image" | "product"
 
 export interface Message {
   id: string
+  tempId?: string
   conversationId: string
   senderId: string
   receiverId: string
-  senderType: "customer" | "seller"
+  senderType?: SenderType
   senderName?: string
   text: string
-  messageType: "text" | "product" | "image"
+  messageType: MessageType
+  imageUrl?: string
   productId?: string
   productName?: string
-  productPrice?: string
   productImage?: string
+  productPrice?: number
   isRead: boolean
-  timestamp: Date | string
-  tempId?: string // For optimistic updates
+  timestamp: Date
 }
 
 export interface Conversation {
@@ -23,49 +27,45 @@ export interface Conversation {
   participantId: string
   participantName: string
   participantAvatar: string
-  participantType: "customer" | "seller"
+  participantType: SenderType
   lastMessage: string
-  lastMessageTime: Date | string
+  lastMessageTime: Date
   unreadCount: number
   isOnline: boolean
   isTyping?: boolean
 }
 
-export interface TypingIndicator {
-  odId: number
-  odName?: string
-  conversationId: number
+export interface TypingUser {
+  conversationId: string
+  userId: string
+  userName: string
+  userType: SenderType
 }
 
-export interface SocketEvents {
-  "user:join": { userId: number; userType: "customer" | "seller" }
-  "user:online": { userId: number; isOnline: boolean }
-  "conversation:join": number
-  "conversation:leave": number
-  "message:send": {
-    conversationId: number
-    senderId: number
-    receiverId: number
-    content: string
-    messageType?: string
-    productId?: number
-    tempId?: string
-    senderType?: string
-    senderName?: string
-  }
-  "message:new": Message
-  "message:notification": {
-    conversationId: number
-    senderId: number
-    senderName?: string
-    content: string
-    timestamp: string
-  }
-  "typing:start": TypingIndicator
-  "typing:stop": TypingIndicator
-  "message:read": {
-    conversationId: number
-    userId: number
-    readAt?: string
-  }
+export interface SocketMessage {
+  conversationId: string  // Changed from number to string for consistency
+  senderId: string        // Changed from number to string for consistency
+  receiverId: string      // Changed from number to string for consistency
+  content: string
+  messageType: MessageType
+  productId?: string      // Changed from number to string for consistency
+  tempId?: string
+  senderType?: SenderType
+  senderName?: string
+  imageUrl?: string       // Added for image messages
+}
+
+// Utility types for API responses
+export interface SendMessageRequest {
+  conversationId: string
+  text: string
+  messageType: MessageType
+  productId?: string
+  imageUrl?: string
+}
+
+export interface SendMessageResponse {
+  success: boolean
+  message: Message
+  tempId?: string
 }

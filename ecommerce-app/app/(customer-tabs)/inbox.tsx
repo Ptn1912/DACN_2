@@ -1,30 +1,32 @@
 "use client"
 
-// Customer Inbox Screen
+// Customer Inbox Screen - List of Conversations
 
-import { useState, useEffect } from "react"
-import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert } from "react-native"
+import { useState, useEffect, useCallback } from "react"
+import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { router } from "expo-router"
 import { useChat } from "@/hooks/useChat"
 import type { Conversation } from "@/types/chat"
 
-export default function InboxScreen() {
-  const { conversations, loading, error, isConnected, selectConversation, loadConversations, clearError } = useChat()
+export default function CustomerInboxScreen() {
+  const { conversations, loading, error, isConnected, typingUsers, selectConversation, loadConversations, clearError } =
+    useChat()
+
   const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     if (error) {
-      Alert.alert("Lỗi", error, [{ text: "OK", onPress: () => clearError() }])
+      Alert.alert("Loi", error, [{ text: "OK", onPress: () => clearError() }])
     }
   }, [error, clearError])
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true)
     await loadConversations()
     setRefreshing(false)
-  }
+  }, [loadConversations])
 
   const handleSelectConversation = (conversation: Conversation) => {
     selectConversation(conversation)
@@ -54,29 +56,39 @@ export default function InboxScreen() {
     }
   }
 
+  const isTyping = (conversationId: string) => {
+    return typingUsers.has(conversationId)
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="px-4 py-3 border-b border-gray-100 flex-row justify-between items-center">
-        <Text className="text-2xl font-bold text-gray-900">Tin nhắn</Text>
+        <View className="flex-row items-center">
+          <TouchableOpacity onPress={() => router.back()} className="mr-3">
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text className="text-2xl font-bold text-gray-900">Tin nhan</Text>
+        </View>
         <View className="flex-row items-center">
           <View className={`w-2 h-2 rounded-full mr-2 ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
-          <Text className="text-xs text-gray-500">{isConnected ? "Đang kết nối" : "Mất kết nối"}</Text>
+          <Text className="text-xs text-gray-500">{isConnected ? "Dang ket noi" : "Mat ket noi"}</Text>
         </View>
       </View>
 
       {/* Conversations List */}
       <ScrollView className="flex-1" refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {loading && conversations.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-8">
-            <Text className="text-gray-500">Đang tải tin nhắn...</Text>
+          <View className="flex-1 items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text className="text-gray-500 mt-4">Dang tai tin nhan...</Text>
           </View>
         ) : conversations.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-8 px-4">
+          <View className="flex-1 items-center justify-center py-20 px-4">
             <Ionicons name="chatbubble-outline" size={64} color="#9CA3AF" />
-            <Text className="text-gray-500 mt-4 text-lg font-medium">Chưa có tin nhắn</Text>
+            <Text className="text-gray-500 mt-4 text-lg font-medium">Chua co tin nhan</Text>
             <Text className="text-gray-400 text-center mt-2">
-              Khi bạn có tin nhắn từ cửa hàng, chúng sẽ xuất hiện ở đây
+              Khi ban co tin nhan tu cua hang, chung se xuat hien o day
             </Text>
           </View>
         ) : (
@@ -87,9 +99,12 @@ export default function InboxScreen() {
               onPress={() => handleSelectConversation(conversation)}
             >
               <View className="relative">
-                <Image source={{ uri: conversation.participantAvatar }} className="w-12 h-12 rounded-full" />
+                <Image
+                  source={{ uri: conversation.participantAvatar }}
+                  className="w-14 h-14 rounded-full bg-gray-200"
+                />
                 {conversation.isOnline && (
-                  <View className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                  <View className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
                 )}
               </View>
 
@@ -97,18 +112,31 @@ export default function InboxScreen() {
                 <View className="flex-row justify-between items-start">
                   <View className="flex-row items-center flex-1">
                     <Text className="font-semibold text-gray-900 text-base">{conversation.participantName}</Text>
-                    {conversation.isTyping && <Text className="text-blue-500 text-xs ml-2">đang nhập...</Text>}
+                    {conversation.participantType === "seller" && (
+                      <View className="ml-2 bg-blue-100 px-2 py-0.5 rounded">
+                        <Text className="text-blue-600 text-xs">Shop</Text>
+                      </View>
+                    )}
                   </View>
                   <Text className="text-gray-400 text-xs">{formatTime(conversation.lastMessageTime)}</Text>
                 </View>
 
                 <View className="flex-row justify-between items-center mt-1">
-                  <Text className="text-gray-600 text-sm flex-1 mr-2" numberOfLines={1}>
-                    {conversation.lastMessage || "Bắt đầu trò chuyện"}
-                  </Text>
+                  {isTyping(conversation.id) ? (
+                    <Text className="text-blue-500 text-sm italic">dang nhap...</Text>
+                  ) : (
+                    <Text
+                      className={`text-sm flex-1 mr-2 ${
+                        conversation.unreadCount > 0 ? "text-gray-900 font-medium" : "text-gray-500"
+                      }`}
+                      numberOfLines={1}
+                    >
+                      {conversation.lastMessage || "Bat dau tro chuyen"}
+                    </Text>
+                  )}
                   {conversation.unreadCount > 0 && (
-                    <View className="bg-red-500 rounded-full min-w-5 h-5 items-center justify-center">
-                      <Text className="text-white text-xs font-medium px-1">
+                    <View className="bg-red-500 rounded-full min-w-6 h-6 items-center justify-center">
+                      <Text className="text-white text-xs font-bold px-1.5">
                         {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
                       </Text>
                     </View>
