@@ -30,7 +30,6 @@ export const authService = {
     try {
       const response = await api.post('/auth/register', data);
       
-      // CHỈ tạo wallet cho CUSTOMER, KHÔNG tạo cho SELLER
       if (data.userType === 'customer') {
         console.log('📝 Creating blockchain wallet for customer...');
         await this.ensureUserHasWallet(response.data.user.id);

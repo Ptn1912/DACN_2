@@ -98,43 +98,6 @@ class EthersService {
     console.log('✅ EthersService initialized');
   }
 
-//   async debugTransferConditions(fromUserId: number, toUserId: number, amount: number): Promise<void> {
-//   try {
-//     await this.initialize();
-//     if (!this.contract) throw new Error('Not initialized');
-
-//     console.log('🐛 === DEBUG TRANSFER CONDITIONS ===');
-    
-//     const fromAddress = await this.contract.userWallets(fromUserId);
-//     const toAddress = await this.contract.userWallets(toUserId);
-    
-//     console.log('👤 From user ID:', fromUserId, 'Address:', fromAddress);
-//     console.log('👤 To user ID:', toUserId, 'Address:', toAddress);
-    
-//     const fromBalance = await this.contract.getUserBalance(fromUserId);
-//     console.log('💰 From user balance (COIN):', fromBalance.toString());
-    
-//     const fromBalanceWei = await this.contract.balanceOf(fromAddress);
-//     console.log('💰 From user balance (wei):', fromBalanceWei.toString());
-    
-//     const toBalance = await this.contract.getUserBalance(toUserId);
-//     console.log('💰 To user balance (COIN):', toBalance.toString());
-    
-//     const toBalanceWei = await this.contract.balanceOf(toAddress);
-//     console.log('💰 To user balance (wei):', toBalanceWei.toString());
-    
-//     console.log('🔀 Transfer amount:', amount, 'COIN');
-    
-//     // Kiểm tra điều kiện
-//     const sufficientBalance = fromBalance >= BigInt(amount);
-//     console.log('✅ Sufficient balance:', sufficientBalance);
-    
-//     console.log('🐛 === END DEBUG ===');
-//   } catch (error) {
-//     console.error('❌ Debug transfer conditions error:', error);
-//   }
-// }
-
   async getContractOwner(): Promise<string> {
   try {
     await this.initialize();
@@ -170,7 +133,6 @@ class EthersService {
     }
   }
 
-  // services/ethersService.ts - Sửa hàm registerUserWallet
   async registerUserWallet(userId: number): Promise<{ success: boolean; address?: string; error?: string }> {
     try {
       await this.initialize();

@@ -117,10 +117,6 @@ export default function TabLayout() {
       />
 
       {/* Các screen ẩn - không hiển thị trong tab bar */}
-      <Tabs.Screen
-        name="product-customer/[id]"
-        options={{ href: null }}
-      />
       
       <Tabs.Screen
         name="inbox"
