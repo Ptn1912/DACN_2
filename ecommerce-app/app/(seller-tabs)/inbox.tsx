@@ -29,7 +29,7 @@ export default function SellerInboxScreen() {
 
   const handleSelectConversation = (conversation: any) => {
     selectConversation(conversation);
-    router.push('/chat');
+    router.push('/(seller-tabs)/chat');
   };
 
   const formatTime = (date: Date) => {

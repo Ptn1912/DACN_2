@@ -114,7 +114,7 @@ export default function SellerShopScreen() {
     
     // Chuyển đến chat screen với conversationId
     router.push({
-      pathname: '/chat',
+      pathname: '/(customer-tabs)/chat',
       params: { conversationId: conversation.id }
     });
     

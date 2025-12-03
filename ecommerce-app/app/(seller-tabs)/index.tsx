@@ -224,7 +224,7 @@ export default function SellerDashboardScreen() {
             <TouchableOpacity>
               <Ionicons name="notifications-outline" size={26} color="#1F2937" />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={()=>router.push('/(seller-tabs)/inbox')}>
               <Ionicons name="chatbubble-outline" size={26} color="#1F2937" />
             </TouchableOpacity>
           </View>

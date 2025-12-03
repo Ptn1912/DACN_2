@@ -93,6 +93,22 @@ export default function SellerTabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: "Tin nhắn",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble-ellipses" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          href: null,
+        }}
+      />
+      
       
     </Tabs>
   );

@@ -15,7 +15,7 @@ const getSocketUrl = () => {
   // Android Emulator: http://10.0.2.2:3000
   // iOS Simulator: http://localhost:3000
   // Physical Device: http://YOUR_IP:3000
-  return "http://192.168.88.101:3000"
+  return "http://10.0.2.2:3000"
 }
 
 const SOCKET_URL = getSocketUrl()
