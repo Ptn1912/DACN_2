@@ -49,6 +49,13 @@ export default function SellerTabLayout() {
           href: null,
         }}
       />
+
+      <Tabs.Screen
+        name="order/[id]"
+        options={{
+          href: null,
+        }}
+      />
       {/* Products */}
       <Tabs.Screen
         name="products"

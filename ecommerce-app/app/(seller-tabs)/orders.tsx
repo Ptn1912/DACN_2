@@ -220,8 +220,8 @@ export default function OrdersScreen() {
             >
               <LinearGradient
                 colors={
-                  (activeFilter === tab.key 
-                    ? tab.colors 
+                  (activeFilter === tab.key
+                    ? tab.colors
                     : ['#FFFFFF', '#FFFFFF']) as [string, string, ...string[]]
                 }
                 className="px-5 py-4 rounded-2xl shadow-md border border-gray-100"
@@ -266,7 +266,7 @@ export default function OrdersScreen() {
               <TouchableOpacity
                 key={order.id}
                 className="bg-white rounded-xl p-4 mb-3 shadow-md border border-gray-100"
-                onPress={() => router.push(`/(seller-tabs)/order/[id]`)}
+                onPress={() => router.push(`/(seller-tabs)/order/${order.id}` as any)}
                 activeOpacity={0.8}
               >
                 {/* Order Header */}
@@ -386,7 +386,7 @@ export default function OrdersScreen() {
                     {/* Nếu không có hành động chính, hiển thị chi tiết */}
                     {!isPending && !isConfirmed && !isDelivered && (
                       <TouchableOpacity
-                        onPress={() => router.push(`/(seller-tabs)/order/[id]`)}
+                        onPress={() => router.push(`/(seller-tabs)/order/${order.id}` as any)}
                         className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
                       >
                         <Text className="text-white font-semibold">
@@ -395,10 +395,10 @@ export default function OrdersScreen() {
                       </TouchableOpacity>
                     )}
 
-                    {/* Nút đánh giá (Giữ lại cho trường hợp người bán muốn xem đánh giá) */}
+                    {/* Nút đánh giá */}
                     {isDelivered && (
                       <TouchableOpacity
-                        onPress={() => router.push(`/(seller-tabs)/order/[id]`)} // Giả định có trang đánh giá
+                        onPress={() => router.push(`/(seller-tabs)/order/${order.id}` as any)}
                         className="flex-1 bg-yellow-600 rounded-xl py-3 items-center"
                       >
                         <Text className="text-white font-semibold">

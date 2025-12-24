@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../../hooks/useAuth";
 import { getOrderById, cancelOrder, requestReturn, confirmDelivered } from "@/services/orderService";
+import { reviewService } from "@/services/reviewService";
 
 
 export default function OrderDetailScreen() {
@@ -18,11 +19,26 @@ export default function OrderDetailScreen() {
   const params = useLocalSearchParams();
   const orderId = params.id as string;
 
+  const [openReviewFor, setOpenReviewFor] = useState<number | null>(null); // productId đang mở form
+  const [reviewDraft, setReviewDraft] = useState<Record<number, { rating: number; comment: string }>>({});
+  const [reviewSubmitting, setReviewSubmitting] = useState<Record<number, boolean>>({});
+  const [reviewedProductIds, setReviewedProductIds] = useState<Set<number>>(new Set());
+  const myUserId = user?.id ? Number(user.id) : null;
+
   const fetchOrder = async () => {
     try {
       setLoading(true);
       const data = await getOrderById(Number(orderId));
       setOrder(data);
+
+      const uid = myUserId;
+      const reviewed = new Set<number>(
+        (data?.reviews || [])
+          .filter((r: any) => Number(r.userId) === uid)
+          .map((r: any) => Number(r.productId))
+      );
+      setReviewedProductIds(reviewed);
+      setOpenReviewFor((cur) => (cur && reviewed.has(cur) ? null : cur));
     } catch (error) {
       console.log(error);
       Alert.alert("Lỗi", "Không thể tải đơn hàng");
@@ -32,8 +48,8 @@ export default function OrderDetailScreen() {
   };
 
   useEffect(() => {
-    if (orderId && user?.id) fetchOrder();
-  }, [orderId, user?.id]);
+    if (orderId && myUserId) fetchOrder();
+  }, [orderId, myUserId]);
 
   const getStatusInfo = (status: string) => {
     const map: Record<string, { text: string; color: string }> = {
@@ -113,6 +129,50 @@ export default function OrderDetailScreen() {
     ]);
   };
 
+  const getDraft = (productId: number) => {
+    return reviewDraft[productId] || { rating: 5, comment: "" };
+  };
+
+  const setDraft = (productId: number, data: Partial<{ rating: number; comment: string }>) => {
+    setReviewDraft((prev) => ({
+      ...prev,
+      [productId]: { ...getDraft(productId), ...data },
+    }));
+  };
+
+  const submitReview = async (productId: number) => {
+    if (!user?.id) return;
+    if (!order?.id) return;
+
+    const { rating, comment } = getDraft(productId);
+    if (rating < 1 || rating > 5) {
+      Alert.alert("Lỗi", "Số sao phải từ 1 đến 5");
+      return;
+    }
+
+    try {
+      setReviewSubmitting((p) => ({ ...p, [productId]: true }));
+
+      await reviewService.createReview({
+        productId,
+        orderId: order.id,
+        userId: user.id,
+        rating,
+        comment,
+      });
+
+      Alert.alert("Thành công", "Đã gửi đánh giá!");
+      setReviewedProductIds((prev) => new Set([...Array.from(prev), productId]));
+      setOpenReviewFor(null);
+
+      fetchOrder();
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert("Lỗi", e?.response?.data?.error || "Không thể gửi đánh giá");
+    } finally {
+      setReviewSubmitting((p) => ({ ...p, [productId]: false }));
+    }
+  };
 
   const formatPrice = (price: number) => price.toLocaleString("vi-VN") + "đ";
 
@@ -158,16 +218,146 @@ export default function OrderDetailScreen() {
         {/* Products */}
         <View className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
           <Text className="font-semibold text-gray-700 mb-2">Sản phẩm</Text>
-          {order.items.map((item: any) => (
-            <View key={item.id} className="flex-row items-center mb-3">
-              <Image source={{ uri: item.image || item.product?.images[0] }} className="w-16 h-16 rounded-lg" />
-              <View className="flex-1 ml-3">
-                <Text className="text-gray-900 font-medium">{item.productName || item.product?.name}</Text>
-                <Text className="text-gray-500 text-sm">Số lượng: {item.quantity}</Text>
+
+          {order.items.map((item: any) => {
+            const hasReviewed =
+              !!myUserId &&
+              (order?.reviews || []).some(
+                (r: any) =>
+                  Number(r.productId) === Number(item.productId) &&
+                  Number(r.userId) === Number(myUserId)
+              );
+
+            const isOpen = openReviewFor === Number(item.productId);
+
+            return (
+              <View key={item.id} className="mb-4">
+                <View className="flex-row items-center mb-2">
+                  <Image
+                    source={{ uri: item.image || item.product?.images?.[0] }}
+                    className="w-16 h-16 rounded-lg"
+                  />
+
+                  <View className="flex-1 ml-3">
+                    <Text className="text-gray-900 font-medium">
+                      {item.productName || item.product?.name}
+                    </Text>
+                    <Text className="text-gray-500 text-sm">Số lượng: {item.quantity}</Text>
+                  </View>
+
+                  <Text className="text-red-600 font-bold">
+                    {formatPrice(item.subtotal)}
+                  </Text>
+                </View>
+
+                {order.status === "delivered" && (
+                  <View className="mt-2">
+                    {hasReviewed ? (
+                      <View className="bg-green-50 border border-green-200 rounded-xl p-3 flex-row items-center">
+                        <Ionicons name="checkmark-circle" size={18} color="#059669" />
+                        <Text className="text-green-700  ml-2">
+                          Bạn đã đánh giá sản phẩm này
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        <TouchableOpacity
+                          className={`rounded-xl py-2.5 items-center ${isOpen ? "bg-gray-300" : "bg-yellow-500"
+                            }`}
+                          onPress={() =>
+                            setOpenReviewFor(isOpen ? null : Number(item.productId))
+                          }
+                          activeOpacity={0.9}
+                        >
+                          <Text
+                            className={`font-bold ${isOpen ? "text-gray-800" : "text-white"
+                              }`}
+                          >
+                            {isOpen ? "Đóng đánh giá" : "⭐ Đánh giá"}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {isOpen && (
+                          <View className="mt-3 bg-white rounded-2xl p-4 border border-gray-200">
+                            <Text className="text-gray-900 font-bold mb-2">Chọn số sao</Text>
+
+                            <View className="flex-row items-center mb-3">
+                              {Array.from({ length: 5 }).map((_, i) => {
+                                const star = i + 1;
+                                const draft = getDraft(Number(item.productId));
+
+                                return (
+                                  <TouchableOpacity
+                                    key={star}
+                                    onPress={() =>
+                                      setDraft(Number(item.productId), { rating: star })
+                                    }
+                                    className="mr-1"
+                                  >
+                                    <Ionicons
+                                      name={star <= draft.rating ? "star" : "star-outline"}
+                                      size={28}
+                                      color={star <= draft.rating ? "#F59E0B" : "#D1D5DB"}
+                                    />
+                                  </TouchableOpacity>
+                                );
+                              })}
+
+                              <Text className="ml-2 text-gray-500 text-xs">
+                                {getDraft(Number(item.productId)).rating}/5
+                              </Text>
+                            </View>
+
+                            <Text className="text-gray-900 font-bold mb-2">Nhận xét</Text>
+
+                            <TextInput
+                              value={getDraft(Number(item.productId)).comment}
+                              onChangeText={(t) =>
+                                setDraft(Number(item.productId), { comment: t })
+                              }
+                              placeholder="Chia sẻ cảm nhận..."
+                              multiline
+                              className="border border-gray-200 rounded-xl p-3 text-gray-900"
+                              style={{ minHeight: 90, textAlignVertical: "top" }}
+                            />
+
+                            <TouchableOpacity
+                              className={`mt-4 rounded-xl py-3 items-center ${reviewSubmitting[Number(item.productId)]
+                                  ? "bg-gray-300"
+                                  : "bg-blue-600"
+                                }`}
+                              disabled={!!reviewSubmitting[Number(item.productId)]}
+                              onPress={async () => {
+                                const stillReviewed =
+                                  !!myUserId &&
+                                  (order?.reviews || []).some(
+                                    (r: any) =>
+                                      Number(r.productId) === Number(item.productId) &&
+                                      Number(r.userId) === Number(myUserId)
+                                  );
+                                if (stillReviewed) {
+                                  setOpenReviewFor(null);
+                                  return Alert.alert("Thông báo", "Bạn đã đánh giá sản phẩm này rồi.");
+                                }
+                                await submitReview(Number(item.productId));
+                              }}
+                              activeOpacity={0.9}
+                            >
+                              <Text className="text-white font-bold">
+                                {reviewSubmitting[Number(item.productId)]
+                                  ? "Đang gửi..."
+                                  : "Gửi đánh giá"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </>
+                    )}
+                  </View>
+                )}
               </View>
-              <Text className="text-red-600 font-bold">{formatPrice(item.subtotal)}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Summary */}

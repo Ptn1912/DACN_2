@@ -41,6 +41,19 @@ export interface Order {
     fullName: string;
     phone: string;
   };
+  reviews?: Review[];
+}
+
+export interface Review {
+  id: number;
+  productId: number;
+  userId: number;
+  orderId: number;
+  rating: number;
+  comment?: string;
+  images: string[];
+  createdAt: string;
+  user: { id: number; fullName: string };
 }
 
 export type OrderStatus =

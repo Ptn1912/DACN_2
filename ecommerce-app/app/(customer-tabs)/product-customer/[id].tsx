@@ -1,5 +1,5 @@
 // app/product/[id].tsx
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Product, productService } from '@/services/productService';
+import { reviewService } from "@/services/reviewService";
 import { useCart } from '../../context/CartContext';
 
 const { width } = Dimensions.get('window');
@@ -30,6 +31,8 @@ export default function ProductDetailCusScreen() {
   const [quantity, setQuantity] = useState(1);
   const scrollY = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // Ẩn tab bar khi vào màn hình này
   useLayoutEffect(() => {
@@ -54,7 +57,9 @@ export default function ProductDetailCusScreen() {
 
   useEffect(() => {
     fetchProductDetail();
+    fetchReviews();
   }, [id]);
+
 
   const fetchProductDetail = async () => {
     try {
@@ -73,6 +78,18 @@ export default function ProductDetailCusScreen() {
       router.back();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      setReviewLoading(true);
+      const res = await reviewService.getReviewsByProduct(Number(id), { page: 1, limit: 20 });
+      if (res.success) setReviews(res.data.reviews || []);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setReviewLoading(false);
     }
   };
 
@@ -491,6 +508,37 @@ export default function ProductDetailCusScreen() {
                 </View>
               </View>
             </View>
+          </View>
+          <View className="bg-gray-50 rounded-3xl p-4 mb-4">
+            <Text className="text-gray-900 font-bold text-base mb-3">Đánh giá từ người mua</Text>
+
+            {reviewLoading ? (
+              <Text className="text-gray-500">Đang tải đánh giá...</Text>
+            ) : reviews.length === 0 ? (
+              <Text className="text-gray-500">Chưa có đánh giá nào.</Text>
+            ) : (
+              reviews.map((rv, idx) => (
+                <View key={rv.id || idx} className="bg-white rounded-2xl p-3 mb-3 border border-gray-100">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-gray-900 font-semibold">
+                      {rv.user?.fullName || "Người dùng"}
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text className="text-gray-700 font-bold ml-1">{rv.rating}/5</Text>
+                    </View>
+                  </View>
+
+                  {!!rv.comment && (
+                    <Text className="text-gray-700 text-sm leading-5">{rv.comment}</Text>
+                  )}
+
+                  <Text className="text-gray-400 text-xs mt-2">
+                    {new Date(rv.createdAt).toLocaleDateString("vi-VN")}
+                  </Text>
+                </View>
+              ))
+            )}
           </View>
 
           <View className="h-24" />
