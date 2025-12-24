@@ -1,5 +1,5 @@
 // app/product/[id].tsx
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -12,15 +12,16 @@ import {
   Animated,
   Share,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { Product, productService } from '@/services/productService';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { Product, productService } from "@/services/productService";
 import { useCart } from "@/context/CartContext";
+import { reviewService } from "@/services/reviewService";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 export default function ProductDetailCusScreen() {
   const { id } = useLocalSearchParams();
@@ -30,30 +31,33 @@ export default function ProductDetailCusScreen() {
   const [quantity, setQuantity] = useState(1);
   const scrollY = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // Ẩn tab bar khi vào màn hình này
   useLayoutEffect(() => {
     navigation.setOptions({
-      tabBarStyle: { display: 'none' }
+      tabBarStyle: { display: "none" },
     });
 
     // Hiện lại tab bar khi rời khỏi màn hình
     return () => {
       navigation.setOptions({
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: "#fff",
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: "#E5E7EB",
           paddingBottom: 8,
           paddingTop: 8,
           height: 65,
-        }
+        },
       });
     };
   }, [navigation]);
 
   useEffect(() => {
     fetchProductDetail();
+    fetchReviews();
   }, [id]);
 
   const fetchProductDetail = async () => {
@@ -64,30 +68,47 @@ export default function ProductDetailCusScreen() {
       if (result.success && result.data) {
         setProduct(result.data.products[0]);
       } else {
-        Alert.alert('Lỗi', 'Không thể tải thông tin sản phẩm');
+        Alert.alert("Lỗi", "Không thể tải thông tin sản phẩm");
         router.back();
       }
     } catch (error) {
-      console.error('Fetch product error:', error);
-      Alert.alert('Lỗi', 'Đã có lỗi xảy ra');
+      console.error("Fetch product error:", error);
+      Alert.alert("Lỗi", "Đã có lỗi xảy ra");
       router.back();
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchReviews = async () => {
+    try {
+      setReviewLoading(true);
+      const res = await reviewService.getReviewsByProduct(Number(id), {
+        page: 1,
+        limit: 20,
+      });
+      if (res.success) setReviews(res.data.reviews || []);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Xem sản phẩm ${product?.name} - Giá: ${formatPrice(product?.price || 0)}`,
+        message: `Xem sản phẩm ${product?.name} - Giá: ${formatPrice(
+          product?.price || 0
+        )}`,
       });
     } catch (error) {
-      console.error('Share error:', error);
+      console.error("Share error:", error);
     }
   };
 
   const { addToCart, setBuyNowCart } = useCart();
-  
+
   const handleAddToCart = () => {
     if (!product) return;
 
@@ -99,54 +120,50 @@ export default function ProductDetailCusScreen() {
       quantity: quantity,
     });
 
-    Alert.alert(
-      "Đã thêm vào giỏ",
-      "",
-      [
-        { text: "Xem giỏ hàng", onPress: () => router.push("/cart") },
-        { text: "Tiếp tục" },
-      ]
-    );
+    Alert.alert("Đã thêm vào giỏ", "", [
+      { text: "Xem giỏ hàng", onPress: () => router.push("/cart") },
+      { text: "Tiếp tục" },
+    ]);
   };
 
   const handleBuyNow = () => {
-  if (!product) return;
+    if (!product) return;
 
-  if (product.stock === 0) {
-    Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
-    return;
-  }
-
-  if (quantity > product.stock) {
-    Alert.alert('Thông báo', `Chỉ còn ${product.stock} sản phẩm trong kho`);
-    return;
-  }
-
-  // Tạo giỏ hàng "Mua ngay" riêng biệt
-  const buyNowItem = {
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    image: product.images[0],
-    quantity: quantity,
-  };
-
-  // Set buy now cart và chuyển tới checkout với flag
-  setBuyNowCart([buyNowItem]);
-  
-  router.push({
-    pathname: '/checkout',
-    params: {
-      mode: 'buyNow' // Flag để checkout biết đây là "Mua ngay"
+    if (product.stock === 0) {
+      Alert.alert("Thông báo", "Sản phẩm đã hết hàng");
+      return;
     }
-  });
-};
+
+    if (quantity > product.stock) {
+      Alert.alert("Thông báo", `Chỉ còn ${product.stock} sản phẩm trong kho`);
+      return;
+    }
+
+    // Tạo giỏ hàng "Mua ngay" riêng biệt
+    const buyNowItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images[0],
+      quantity: quantity,
+    };
+
+    // Set buy now cart và chuyển tới checkout với flag
+    setBuyNowCart([buyNowItem]);
+
+    router.push({
+      pathname: "/checkout",
+      params: {
+        mode: "buyNow", // Flag để checkout biết đây là "Mua ngay"
+      },
+    });
+  };
 
   const increaseQuantity = () => {
     if (product && quantity < product.stock) {
       setQuantity(quantity + 1);
     } else {
-      Alert.alert('Thông báo', 'Đã đạt số lượng tối đa trong kho');
+      Alert.alert("Thông báo", "Đã đạt số lượng tối đa trong kho");
     }
   };
 
@@ -157,25 +174,33 @@ export default function ProductDetailCusScreen() {
   };
 
   const formatPrice = (price: number) => {
-    return Number(price).toLocaleString('vi-VN') + ' ₫';
+    return Number(price).toLocaleString("vi-VN") + " ₫";
   };
 
   const getStockStatus = () => {
-    if (!product) return { text: '', color: '', bg: '' };
+    if (!product) return { text: "", color: "", bg: "" };
 
     if (product.stock === 0) {
-      return { text: 'Hết hàng', color: '#EF4444', bg: '#FEE2E2' };
+      return { text: "Hết hàng", color: "#EF4444", bg: "#FEE2E2" };
     } else if (product.stock < 10) {
-      return { text: `Chỉ còn ${product.stock} sản phẩm`, color: '#F59E0B', bg: '#FEF3C7' };
+      return {
+        text: `Chỉ còn ${product.stock} sản phẩm`,
+        color: "#F59E0B",
+        bg: "#FEF3C7",
+      };
     }
-    return { text: `Còn ${product.stock} sản phẩm`, color: '#10B981', bg: '#D1FAE5' };
+    return {
+      text: `Còn ${product.stock} sản phẩm`,
+      color: "#10B981",
+      bg: "#D1FAE5",
+    };
   };
 
   // Header animation
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 200],
     outputRange: [0, 1],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
 
   if (loading) {
@@ -216,7 +241,7 @@ export default function ProductDetailCusScreen() {
         className="absolute top-0 left-0 right-0 z-10"
       >
         <LinearGradient
-          colors={['#3B82F6', '#2563EB']}
+          colors={["#3B82F6", "#2563EB"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           className="pt-12 pb-4 px-4"
@@ -228,7 +253,10 @@ export default function ProductDetailCusScreen() {
             >
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <Text className="text-white font-bold text-base flex-1 mx-4" numberOfLines={1}>
+            <Text
+              className="text-white font-bold text-base flex-1 mx-4"
+              numberOfLines={1}
+            >
               {product.name}
             </Text>
             <TouchableOpacity
@@ -244,7 +272,7 @@ export default function ProductDetailCusScreen() {
       {/* Fixed Header Buttons (Initially visible) */}
       <View className="absolute top-10 left-0 right-0 z-10 px-4 flex-row justify-between">
         <TouchableOpacity
-          onPress={() => router.push('/(customer-tabs)/mall')}
+          onPress={() => router.push("/(customer-tabs)/mall")}
           className="bg-white/90 backdrop-blur rounded-full p-2 shadow-lg"
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
@@ -257,7 +285,9 @@ export default function ProductDetailCusScreen() {
             <Ionicons name="share-outline" size={24} color="#1F2937" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => Alert.alert('Yêu thích', 'Tính năng đang phát triển')}
+            onPress={() =>
+              Alert.alert("Yêu thích", "Tính năng đang phát triển")
+            }
             className="bg-white/90 backdrop-blur rounded-full p-2 shadow-lg"
           >
             <Ionicons name="heart-outline" size={24} color="#EF4444" />
@@ -302,8 +332,9 @@ export default function ProductDetailCusScreen() {
             {product.images.map((_, index) => (
               <View
                 key={index}
-                className={`w-2 h-2 rounded-full mx-1 ${index === currentImageIndex ? 'bg-white' : 'bg-white/40'
-                  }`}
+                className={`w-2 h-2 rounded-full mx-1 ${
+                  index === currentImageIndex ? "bg-white" : "bg-white/40"
+                }`}
               />
             ))}
           </View>
@@ -314,7 +345,10 @@ export default function ProductDetailCusScreen() {
           {/* Category Badge */}
           <View className="flex-row items-center mb-3">
             <LinearGradient
-              colors={[product.category.color + '20', product.category.color + '10']}
+              colors={[
+                product.category.color + "20",
+                product.category.color + "10",
+              ]}
               className="px-3 py-1.5 rounded-full flex-row items-center"
             >
               <Ionicons
@@ -354,7 +388,7 @@ export default function ProductDetailCusScreen() {
 
           {/* Price Card */}
           <LinearGradient
-            colors={['#3B82F6', '#8B5CF6']}
+            colors={["#3B82F6", "#8B5CF6"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             className="rounded-3xl p-5 mb-4"
@@ -393,16 +427,16 @@ export default function ProductDetailCusScreen() {
                   <Text className="text-gray-900 font-bold text-base">
                     {product.seller.fullName}
                   </Text>
-                  <Text className="text-gray-500 text-sm">
-                    Người bán
-                  </Text>
+                  <Text className="text-gray-500 text-sm">Người bán</Text>
                 </View>
               </View>
               <TouchableOpacity
-                onPress={() => router.push({
-                pathname: '/(customer-tabs)/seller-shop/[id]',
-                params: { id: product.seller.id.toString() }
-              })}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(customer-tabs)/seller-shop/[id]",
+                    params: { id: product.seller.id.toString() },
+                  })
+                }
                 className="bg-white rounded-2xl px-4 py-2 border border-gray-200"
               >
                 <Text className="text-blue-600 font-semibold text-sm">
@@ -427,7 +461,7 @@ export default function ProductDetailCusScreen() {
                   <Ionicons
                     name="remove"
                     size={20}
-                    color={quantity <= 1 ? '#D1D5DB' : '#3B82F6'}
+                    color={quantity <= 1 ? "#D1D5DB" : "#3B82F6"}
                   />
                 </TouchableOpacity>
                 <View className="px-6 py-3 border-x border-gray-200">
@@ -443,7 +477,11 @@ export default function ProductDetailCusScreen() {
                   <Ionicons
                     name="add"
                     size={20}
-                    color={product.stock === 0 || quantity >= product.stock ? '#D1D5DB' : '#3B82F6'}
+                    color={
+                      product.stock === 0 || quantity >= product.stock
+                        ? "#D1D5DB"
+                        : "#3B82F6"
+                    }
                   />
                 </TouchableOpacity>
               </View>
@@ -500,7 +538,46 @@ export default function ProductDetailCusScreen() {
               </View>
             </View>
           </View>
+          <View className="bg-gray-50 rounded-3xl p-4 mb-4">
+            <Text className="text-gray-900 font-bold text-base mb-3">
+              Đánh giá từ người mua
+            </Text>
 
+            {reviewLoading ? (
+              <Text className="text-gray-500">Đang tải đánh giá...</Text>
+            ) : reviews.length === 0 ? (
+              <Text className="text-gray-500">Chưa có đánh giá nào.</Text>
+            ) : (
+              reviews.map((rv, idx) => (
+                <View
+                  key={rv.id || idx}
+                  className="bg-white rounded-2xl p-3 mb-3 border border-gray-100"
+                >
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-gray-900 font-semibold">
+                      {rv.user?.fullName || "Người dùng"}
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text className="text-gray-700 font-bold ml-1">
+                        {rv.rating}/5
+                      </Text>
+                    </View>
+                  </View>
+
+                  {!!rv.comment && (
+                    <Text className="text-gray-700 text-sm leading-5">
+                      {rv.comment}
+                    </Text>
+                  )}
+
+                  <Text className="text-gray-400 text-xs mt-2">
+                    {new Date(rv.createdAt).toLocaleDateString("vi-VN")}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
           <View className="h-24" />
         </View>
       </Animated.ScrollView>
@@ -511,8 +588,9 @@ export default function ProductDetailCusScreen() {
           <TouchableOpacity
             onPress={handleAddToCart}
             disabled={product.stock === 0}
-            className={`flex-1 bg-blue-100 py-4 items-center ${product.stock === 0 ? 'opacity-50' : ''
-              }`}
+            className={`flex-1 bg-blue-100 py-4 items-center ${
+              product.stock === 0 ? "opacity-50" : ""
+            }`}
           >
             <View className="flex-col items-center">
               <Ionicons name="cart-outline" size={22} color="#3B82F6" />
@@ -528,7 +606,11 @@ export default function ProductDetailCusScreen() {
             className="flex-1"
           >
             <LinearGradient
-              colors={product.stock === 0 ? ['#D1D5DB', '#9CA3AF'] : ['#3B82F6', '#8B5CF6']}
+              colors={
+                product.stock === 0
+                  ? ["#D1D5DB", "#9CA3AF"]
+                  : ["#3B82F6", "#8B5CF6"]
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               className="rounded-2xl py-4 items-center"

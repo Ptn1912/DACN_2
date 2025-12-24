@@ -47,6 +47,12 @@ export default function SellerTabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="order/[id]"
+        options={{
+          href: null,
+        }}
+      />
       {/* Add Product */}
       <Tabs.Screen
         name="add-product"
@@ -55,7 +61,7 @@ export default function SellerTabLayout() {
         }}
       />
 
-       <Tabs.Screen
+      <Tabs.Screen
         name="product/[id]"
         options={{
           href: null,
@@ -84,7 +90,29 @@ export default function SellerTabLayout() {
           tabBarBadge: 2,
         }}
       />
+<<<<<<< HEAD
 
+=======
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: "Tin nhắn",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble-ellipses" size={size} color={color} />
+          ),
+        }}
+      />
+      {/* Profile/Account */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Tài khoản",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+>>>>>>> bdc11782 (Completed 24/12)
       <Tabs.Screen
         name="chatAI"
         options={{
@@ -98,20 +126,12 @@ export default function SellerTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="inbox"
-        options={{
-          title: "Tin nhắn",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-ellipses" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="chat"
         options={{
           href: null,
         }}
       />
+<<<<<<< HEAD
       {/* Profile/Account */}
       <Tabs.Screen
         name="profile"
@@ -123,6 +143,8 @@ export default function SellerTabLayout() {
         }}
       />
       
+=======
+>>>>>>> bdc11782 (Completed 24/12)
     </Tabs>
   );
 }

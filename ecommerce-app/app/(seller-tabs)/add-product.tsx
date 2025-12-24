@@ -283,7 +283,7 @@ export default function AddProductScreen() {
                 setSelectedCategory(null);
                 setImages([]);
                 // Navigate back
-                router.back();
+                router.push("/(seller-tabs)/products");
               },
             },
           ]

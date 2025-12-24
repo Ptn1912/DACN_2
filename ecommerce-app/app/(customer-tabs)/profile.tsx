@@ -30,7 +30,11 @@ export default function ProfileScreen() {
   const [balance, setBalance] = useState<string>("0");
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+<<<<<<< HEAD
   const { cart } = useCart();
+=======
+  const { cart, removeFromCart, updateQuantity } = useCart();
+>>>>>>> bdc11782 (Completed 24/12)
 
   useEffect(() => {
     if (user?.id) {

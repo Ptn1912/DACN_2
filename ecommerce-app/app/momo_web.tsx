@@ -252,7 +252,6 @@ export default function MoMoPaymentScreen() {
         </View>
       </View>
 
-      {/* ✅ NÚT TEST */}
       <TouchableOpacity
         className="bg-green-600 mx-4 mt-3 rounded-xl py-3 items-center"
         onPress={handleTestPaymentSuccess}
@@ -261,7 +260,7 @@ export default function MoMoPaymentScreen() {
         {processingPayment ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text className="text-white font-bold">Thanh toán</Text>
+          <Text className="text-white font-bold">Thanh toán ngay</Text>
         )}
       </TouchableOpacity>
 

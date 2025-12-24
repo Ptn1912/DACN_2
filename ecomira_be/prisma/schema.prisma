@@ -25,6 +25,7 @@ model User {
   sessions          Session[]
   notifications Notification[]
   spaylaterCustomer SPayLaterCustomer?
+  reviews       Review[]
   
   conversationsAsUser1 Conversation[] @relation("ConversationUser1")
   conversationsAsUser2 Conversation[] @relation("ConversationUser2")
@@ -59,12 +60,14 @@ model Product {
   sellerId    Int         @map("seller_id")
   images      String[]
   rating      Decimal?    @default(0) @db.Decimal(3, 2)
+  ratingCount Int      @default(0) @map("rating_count")
   soldCount   Int         @default(0) @map("sold_count")
   isActive    Boolean     @default(true) @map("is_active")
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
   
   orderItems  OrderItem[]
+  reviews    Review[]
   category    Category    @relation(fields: [categoryId], references: [id])
   seller      User        @relation("UserProducts", fields: [sellerId], references: [id])
   
@@ -75,6 +78,28 @@ model Product {
   @@index([sellerId])
   @@index([isActive])
   @@map("products")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  productId Int      @map("product_id")
+  userId    Int      @map("user_id")
+  orderId   Int      @map("order_id") // để khóa “đã mua”
+  rating    Int // 1..5
+  comment   String?  @db.Text
+  images    String[] // optional
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, productId, userId]) // 1 user review 1 product trong 1 order
+  @@index([productId])
+  @@index([userId])
+  @@index([orderId])
+  @@map("reviews")
 }
 
 model Category {
@@ -109,6 +134,7 @@ model Order {
   
   // Existing relations
   items                 OrderItem[]
+  reviews  Review[]
   customer              User                   @relation("CustomerOrders", fields: [customerId], references: [id])
   spaylaterTransactions SPayLaterTransaction[]
 

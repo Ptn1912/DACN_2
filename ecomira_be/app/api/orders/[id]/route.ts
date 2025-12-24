@@ -41,6 +41,12 @@ export async function GET(
           },
         },
         customer: { select: { id: true, fullName: true, phone: true } },
+        reviews: {
+          include: {
+            user: { select: { id: true, fullName: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 

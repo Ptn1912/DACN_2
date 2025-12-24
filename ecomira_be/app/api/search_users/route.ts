@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: any = {
-      userType: 'customer', // Chỉ lấy customer
+      userType: 'customer', // Chá»‰ láº¥y customer
     };
     
     if (query) {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Search users error:', error);
     return NextResponse.json(
-      { error: 'Không thể tìm kiếm người dùng' },
+      { error: 'KhÃ´ng thá»ƒ tÃ¬m kiáº¿m ngÆ°á»i dÃ¹ng' },
       { status: 500 }
     );
   }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     if (!userId) {
       return NextResponse.json(
-        { error: 'Vui lòng cung cấp userId' },
+        { error: 'Vui lÃ²ng cung cáº¥p userId' },
         { status: 400 }
       );
     }
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Không tìm thấy người dùng' },
+        { error: 'KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i dÃ¹ng' },
         { status: 404 }
       );
     }
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Get user error:', error);
     return NextResponse.json(
-      { error: 'Không thể lấy thông tin người dùng' },
+      { error: 'KhÃ´ng thá»ƒ láº¥y thÃ´ng tin ngÆ°á»i dÃ¹ng' },
       { status: 500 }
     );
   }
